@@ -1,0 +1,71 @@
+{
+  "description": "Definition of risk patterns for the Auditor role.",
+  "risk_categories": [
+    {
+      "id": "destructive_fs",
+      "severity": "high_severity",
+      "description": "Operations that permanently delete or corrupt essential data.",
+      "patterns": [
+        "rm -rf /",
+        "rm -rf ~",
+        "shred ",
+        "dd if=/dev/zero",
+        "> /etc/hosts",
+        "mkfs"
+      ]
+    },
+    {
+      "id": "system_modification",
+      "severity": "high_severity",
+      "description": "Changes to system configuration or global environment.",
+      "patterns": [
+        "chmod 777 /",
+        "chown root:root",
+        "usermod",
+        "echo ... >> /etc/profile"
+      ]
+    },
+    {
+      "id": "network_exposure",
+      "severity": "high_severity",
+      "description": "Exposing credentials or internal data to external endpoints.",
+      "patterns": [
+        "curl -X POST ... -d @id_rsa",
+        "cat .env | nc",
+        "ngrok http"
+      ]
+    },
+    {
+      "id": "malicious_intent",
+      "severity": "high_severity",
+      "description": "Actions resembling malware or attacks.",
+      "patterns": [
+        ":(){ :|:& };:",
+        "fork bomb",
+        "mining",
+        "dos attack",
+        "packet flooding"
+      ]
+    },
+    {
+      "id": "resource_consumption",
+      "severity": "medium_severity",
+      "description": "Heavy operations that might freeze the system or fill disk.",
+      "patterns": [
+        "while true; do",
+        "yes >>",
+        "cat /dev/urandom >>"
+      ]
+    },
+    {
+      "id": "package_management",
+      "severity": "medium_severity",
+      "description": "Installation of global packages.",
+      "patterns": [
+        "apt install",
+        "pip install (without venv)",
+        "npm install -g"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+# --- Python Core ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*$py.class
+
+# --- Distribution / Packaging ---
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Unit Test / Coverage ---
+.tox/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# --- Linters / Type Checkers ---
+# Ruff
+.ruff_cache/
+# MyPy
+.mypy_cache/
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Editor / IDE ---
+# Vim / Neovim
+*~
+*.swp
+*.swo
+.netrwhist
+
+# VS Code
+.vscode/
+
+# JetBrains (PyCharm etc)
+.idea/
+
+# --- OS / System ---
+# Windows / WSL
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+
+# macOS
+.DS_Store
+
+# --- Project Specific (User Custom) ---
+**/.gemini/
+**/dev_status/
+**/.runtime/
+**/tmp/
+.tmp*.*
+*.log
+dev_status/

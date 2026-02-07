@@ -1,0 +1,14 @@
+[
+  {
+    "id": "web_access",
+    "type": "primitive",
+    "description": "General HTTP access tools",
+    "tools": ["curl", "wget"]
+  },
+  {
+    "id": "shell_exec",
+    "type": "primitive",
+    "description": "File system operations (read, write, list, search, check size).",
+    "tools": ["ls", "grep", "cat", "find", "du", "sort", "head", "tail"]
+  }
+]
