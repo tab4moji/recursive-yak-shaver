@@ -14,13 +14,13 @@
   {
     "id": "math_with_sympy",
     "type": "primitive",
-    "description": "Python Library for Symbolic Mathematics.",
+    "description": "Advanced math operations: primes, calculus, algebra, equations. Use this for ANY mathematical calculation.",
     "tools": ["python3", "sympy"]
   },
   {
     "id": "python_exec",
     "type": "primitive",
-    "description": "General purpose programming, logic, and data processing.",
+    "description": "General scripting for system tasks, text processing, and data manipulation. Do NOT use for heavy math.",
     "tools": ["python3", "pip"]
   }
 ]
