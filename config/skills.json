@@ -3,24 +3,28 @@
     "id": "web_access",
     "type": "primitive",
     "description": "General HTTP access tools",
-    "tools": ["curl", "wget"]
+    "tools": ["curl", "wget"],
+    "generation_policy": "## Context\nYou are a Network Operator.\n\n## Constraints\n- Use `curl -s` or `wget -q` to avoid progress bars.\n- If fetching text/JSON, output to stdout.\n- If fetching files, save to `./tmp/` and print the filename.\n\n## Example\nInput: \"Get IP info\"\nOutput:\n```bash\ncurl -s [https://httpbin.org/ip](https://httpbin.org/ip)\n```"
   },
   {
     "id": "shell_exec",
     "type": "primitive",
     "description": "File system operations (read, write, list, search, check size).",
-    "tools": ["ls", "grep", "cat", "find", "du", "sort", "head", "tail"]
+    "tools": ["ls", "grep", "cat", "find", "du", "sort", "head", "tail"],
+    "generation_policy": "## Context\nYou are a Shell Specialist.\n\n## Constraints\n- Prefer single-line bash pipes.\n- Assume execution in the CURRENT directory.\n- Do NOT use `sudo`.\n\n## Example\nInput: \"Find largest log file\"\nOutput:\n```bash\nfind . -name \"*.log\" -type f -exec du -h {} + | sort -rh | head -n 1\n```"
   },
   {
-    "id": "math_with_sympy",
+    "id": "python_math",
     "type": "primitive",
-    "description": "Advanced math operations: primes, calculus, algebra, equations. Use this for ANY mathematical calculation.",
-    "tools": ["python3", "sympy"]
+    "description": "Advanced mathematical calculations (primes, calculus, algebra) using Python + SymPy. Use this for ANY math problems.",
+    "tools": ["python3", "sympy"],
+    "generation_policy": "## Context\nYou are a Python Math Specialist.\n\n## Constraints\n- Generate a STANDALONE Python script.\n- MUST use `import sympy` for calculations.\n- Do NOT implement algorithms manually; use SymPy functions (`primerange`, `factorint`, etc).\n- Print the final result to stdout.\n\n## Example\nInput: \"List primes up to 20 and factorize 2024\"\nOutput:\n```python\nimport sympy\nprint(f\"Primes: {list(sympy.sieve.primerange(1, 21))}\")\nprint(f\"Factors: {sympy.factorint(2024)}\")\n```"
   },
   {
-    "id": "python_exec",
+    "id": "python_script",
     "type": "primitive",
-    "description": "General scripting for system tasks, text processing, and data manipulation. Do NOT use for heavy math.",
-    "tools": ["python3", "pip"]
+    "description": "Text processing, data formatting, and logic scripting using Python. Do NOT use for heavy math.",
+    "tools": ["python3", "pip"],
+    "generation_policy": "## Context\nYou are a General Python Scripter.\n\n## Constraints\n- Generate a STANDALONE Python script.\n- Use standard libraries (os, sys, json, re) primarily.\n- Do NOT use `sympy`.\n- Print the final result to stdout.\n\n## Example\nInput: \"Print current epoch time\"\nOutput:\n```python\nimport time\nprint(int(time.time()))\n```"
   }
 ]

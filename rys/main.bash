@@ -49,7 +49,7 @@ else
     cat "${TEMP_DISP}"
 fi
 
-echo -e "\n>>> 4. Execution Phase (Grouped)"
+echo -e "\n>>> 4. Planning Phase (Grouped)"
 
 # Check if execution plan exists
 if [ ! -f "${TEMP_EXEC}" ] || [ ! -s "${TEMP_EXEC}" ]; then
@@ -80,18 +80,28 @@ while IFS=$'\t' read -r req_index current_skill topic || [ -n "$req_index" ]; do
     # Goal for the Planner is just the single topic
     combined_goal="- TOPIC: ${topic}"
 
-    echo "[Planning Phase]"
+    echo "  [Strategic Planning]"
     PLAN_OUT=$(${INVOKER} ${LLM_OPTS} --role=planner --prompt="${combined_goal}" < /dev/null)
-    echo "${PLAN_OUT}"
+    # Force newline before numbers if the LLM returned a single line, then indent
+    echo "${PLAN_OUT}" | sed 's/ \([0-9]\+\.\)/\n\1/g' | sed 's/^/  /'
     echo "${PLAN_OUT}" > "${TEMP_PLAN}"
 
-    echo -e "\n[Refining Phase]"
-    REFINED_OUT=$(${INVOKER} ${LLM_OPTS} --role=refiner --skills="${current_skill}" --prompt="$(cat "${TEMP_PLAN}")" < /dev/null)
-    echo "${REFINED_OUT}"
+    echo -e "\n  [Technical Analysis]"
+    TEMP_ENG="./tmp/.rys.${rys_uuid}.engineer_out.txt"
+    ENG_OUT=$(${INVOKER} ${LLM_OPTS} --role=engineer --skills="${current_skill}" --prompt="${combined_goal}" < /dev/null)
+    # Double indent (4 spaces total) for the content of Technical Analysis
+    echo "${ENG_OUT}" | sed 's/^/    /'
+    echo "${ENG_OUT}" > "${TEMP_ENG}"
 
-    echo -e "\n[Auditing Phase]"
+    echo -e "\n  [Workflow Synthesis]"
+    # Use the correct header "Technical Analysis" for the Refiner
+    REFINER_INPUT="[Strategic Planning]\n$(cat "${TEMP_PLAN}")\n\n[Technical Analysis]\n$(cat "${TEMP_ENG}")"
+    REFINED_OUT=$(${INVOKER} ${LLM_OPTS} --role=refiner --skills="${current_skill}" --prompt="${REFINER_INPUT}" < /dev/null)
+    echo "${REFINED_OUT}" | sed 's/ \([0-9]\+\.\)/\n\1/g' | sed 's/^/  /'
+
+    echo -e "\n  [Audit & Verification]"
     AUDIT_OUT=$(${INVOKER} ${LLM_OPTS} --role=auditor --risks="${RISKS_CONFIG}" --prompt="${REFINED_OUT}" < /dev/null)
-    echo "${AUDIT_OUT}"
+    echo "${AUDIT_OUT}" | sed 's/^/  /'
 
     if echo "${AUDIT_OUT}" | grep -q "\[FAIL\]"; then
         echo -e "\n!!! AUDIT FAILED !!! Execution blocked for this topic."

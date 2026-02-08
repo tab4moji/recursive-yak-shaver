@@ -13,7 +13,9 @@ Your goal is to generate a descriptive summary title for each pre-grouped Job.
    - If the status is `Unable to Process`, the title should reflect the missing capability.
 3. **Output** the REQUEST block with your new Title.
    - **Remove** the `[Skill: ...]` / `[Status: ...]` tags from the header.
-   - Keep the bullet points exactly as they are.
+   - **DO NOT** add, remove, or modify any `- TOPIC:` lines.
+   - **DO NOT** duplicate any `- TOPIC:` lines.
+   - Keep the bullet points exactly as they appeared in the input.
 
 ### Output Format
 REQUEST <N>: <Generated Title>

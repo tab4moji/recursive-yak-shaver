@@ -8,11 +8,14 @@ RYS processes ambiguous or multi-step user requests through the following pipeli
 1. **Translation**: Converts input into clear English task segments.
 2. **Dispatch**: Analyzes segments and assigns them to "Skills" as individual **TOPICs**.
 3. **Request Visualization**: Groups TOPICs into logical **REQUESTs** and generates descriptive titles.
-4. **Execution (Planning)**: Iterates through each **TOPIC** to create abstract execution steps and technical workflows.
-5. **Auditing**: Evaluates technical workflows against safety policies and risks.
+4. **Planning Phase (Triple-Check System)**: A rigorous three-stage thinking process:
+   - **Strategic Planning**: Provides a high-level conceptual roadmap.
+   - **Technical Analysis**: Selects specific tools and outlines technical steps.
+   - **Workflow Synthesis**: Integrates strategy and technical analysis into a final, natural language workflow.
+5. **Auditing**: Evaluates the synthesized workflow against safety policies and risks.
 
 > [!IMPORTANT]
-> **Current Limitations**: As of the current version, RYS only performs **request interpretation and task planning**. It generates a detailed workflow and execution plan but **DOES NOT execute any actual shell commands or Python scripts** on your system. The actual "Executor" phase is currently under development.
+> **Current Status**: RYS focuses on **high-precision task planning**. It generates a detailed, triple-verified workflow but **DOES NOT execute actual code** on your system yet.
 
 ## Setup
 
@@ -123,10 +126,11 @@ You can extend the agent's capabilities by adding new skills to `config/skills.j
 | Role | Responsibility |
 | :--- | :--- |
 | `translater` | Converts user input into clear instruction segments. |
-| `dispatcher` | Splits input into independent **TOPICs** and maps them to skills. |
+| `dispatcher` | Splits input into independent **TOPICs** and verbatim phrases. |
 | `titler` | Generates professional titles for grouped **REQUESTs**. |
-| `planner` | Drafts abstract steps for an individual **TOPIC**. |
-| `refiner` | Converts plans into technical workflows for specific tools. |
+| `planner` | (Strategic Planner) Drafts high-level strategic roadmaps. |
+| `engineer` | (Technical Analyst) Performs tool selection and technical step analysis. |
+| `refiner` | (Workflow Synthesizer) Merges strategy and analysis into a final workflow. |
 | `auditor` | Validates workflows against a risk knowledge base (`risks.json`). |
 
 ---

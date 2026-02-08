@@ -33,8 +33,8 @@ def parse_line(line: str, idontknow_counter: int) -> tuple:
     if line.strip():
         parts = line.split('|')
         if len(parts) >= 3:
-            # Description (1st part)
-            desc = parts[0].replace('TOPIC:', '').replace('REQUEST:', '').strip()
+            # Original Phrase (2nd part) contains more details (e.g., "up to 100")
+            desc = parts[1].strip()
 
             # Status (Last part)
             status_part = parts[-1].strip()
