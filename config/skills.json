@@ -2,29 +2,29 @@
   {
     "id": "web_access",
     "type": "primitive",
-    "description": "General HTTP access tools",
+    "description": "General HTTP access tools for online information (weather, news, etc).",
     "tools": ["curl", "wget"],
-    "generation_policy": "## Context\nYou are a Network Operator.\n\n## Constraints\n- Use `curl -s` or `wget -q` to avoid progress bars.\n- If fetching text/JSON, output to stdout.\n- If fetching files, save to `./tmp/` and print the filename.\n\n## Example\nInput: \"Get IP info\"\nOutput:\n```bash\ncurl -s [https://httpbin.org/ip](https://httpbin.org/ip)\n```"
+    "generation_policy": "## Context\nYou are a Network Operator.\n\n## Constraints\n- Use `curl -s` or `wget -q` for silent fetching.\n- For weather, use `wttr.in` (e.g., `curl -s wttr.in/Tokyo`).\n\n## Example\nInput: \"Get weather info\"\nOutput:\n```bash\n# Processing: Whole\n# Output Type: Single\ncurl -s wttr.in/Tokyo\n```"
   },
   {
     "id": "shell_exec",
     "type": "primitive",
-    "description": "File system operations (read, write, list, search, check size).",
+    "description": "File system operations (read, write, list, search, check size, sort).",
     "tools": ["ls", "grep", "cat", "find", "du", "sort", "head", "tail"],
-    "generation_policy": "## Context\nYou are a Shell Specialist.\n\n## Constraints\n- Prefer single-line bash pipes.\n- Assume execution in the CURRENT directory.\n- Do NOT use `sudo`.\n\n## Example\nInput: \"Find largest log file\"\nOutput:\n```bash\nfind . -name \"*.log\" -type f -exec du -h {} + | sort -rh | head -n 1\n```"
+    "generation_policy": "## Context\nYou are a Shell Specialist.\n\n## Constraints\n- **ONE ACTION PER STEP**: Use only one primary tool per code fragment.\n- **ACCURACY**: ALWAYS use `du -b` and `sort -rn` (or `sort -n`) for numeric comparisons.\n- **NO PIPES**: Implement ONLY the current task fragment without `|`.\n\n## Example\nInput: \"Step 1: List all regular files\"\nOutput:\n```bash\n# Processing: Whole\n# Output Type: List\nfind . -type f\n```"
   },
   {
     "id": "python_math",
     "type": "primitive",
-    "description": "Advanced mathematical calculations (primes, calculus, algebra) using Python + SymPy. Use this for ANY math problems.",
+    "description": "Advanced mathematical calculations (primes, algebra) using Python + SymPy.",
     "tools": ["python3", "sympy"],
-    "generation_policy": "## Context\nYou are a Python Math Specialist.\n\n## Constraints\n- Generate a STANDALONE Python script.\n- MUST use `import sympy` for calculations.\n- Do NOT implement algorithms manually; use SymPy functions (`primerange`, `factorint`, etc).\n- Print the final result to stdout.\n\n## Example\nInput: \"List primes up to 20 and factorize 2024\"\nOutput:\n```python\nimport sympy\nprint(f\"Primes: {list(sympy.sieve.primerange(1, 21))}\")\nprint(f\"Factors: {sympy.factorint(2024)}\")\n```"
+    "generation_policy": "## Context\nYou are a Python Math Specialist.\n\n## Constraints\n- Use `data` variable to store and pass results.\n- Use `import sympy` and its built-in functions for all logic.\n\n## Example\nInput: \"Step 1: Calculate prime numbers up to 20 and store the list in the `data` variable.\"\nOutput:\n```python\n# Processing: Whole\n# Output Type: List\nimport sympy\ndata = list(sympy.sieve.primerange(1, 21))\n```"
   },
   {
     "id": "python_script",
     "type": "primitive",
-    "description": "Text processing, data formatting, and logic scripting using Python. Do NOT use for heavy math.",
+    "description": "Text processing, data formatting, and logic scripting using Python.",
     "tools": ["python3", "pip"],
-    "generation_policy": "## Context\nYou are a General Python Scripter.\n\n## Constraints\n- Generate a STANDALONE Python script.\n- Use standard libraries (os, sys, json, re) primarily.\n- Do NOT use `sympy`.\n- Print the final result to stdout.\n\n## Example\nInput: \"Print current epoch time\"\nOutput:\n```python\nimport time\nprint(int(time.time()))\n```"
+    "generation_policy": "## Context\nYou are a General Python Scripter.\n\n## Constraints\n- Generate a STANDALONE Python script using standard libraries.\n- Print the final result to stdout.\n\n## Example\nInput: \"Print epoch time\"\nOutput:\n```python\n# Processing: Whole\n# Output Type: Single\nimport time\nprint(int(time.time()))\n```"
   }
 ]

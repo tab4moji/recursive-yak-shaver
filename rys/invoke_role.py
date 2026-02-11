@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Invoke Role Wrapper (v0.6)
-Update: Added --risks support for the Auditor role.
-
-History:
-  2. 2026-02-07 Refactored and split for Pylint compliance
+Invoke Role Wrapper (v0.8)
+Centralized hub for all role-based LLM interactions with analysis capabilities.
 """
 # pylint: disable=duplicate-code,useless-return,broad-exception-caught
 
@@ -13,14 +10,17 @@ import sys
 import os
 import argparse
 import json
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
-from chat_core import run_chat_session
-from role_utils import construct_system_prompt
-
-# Setup path to import chat_core
+# Setup path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(SCRIPT_DIR)
+if SCRIPT_DIR not in sys.path:
+    sys.path.append(SCRIPT_DIR)
+
+from chat_core import process_turn
+from role_utils import construct_system_prompt
+from chat_types import ChatConfig
+from chat_ui import TerminalColors
 
 
 def parse_skills_arg(value: Optional[str]) -> Optional[List[str]]:
@@ -40,8 +40,48 @@ def parse_skills_arg(value: Optional[str]) -> Optional[List[str]]:
     return [s.strip() for s in val.split(',') if s.strip()]
 
 
+def invoke_role_api(role: str, prompt: str, config: ChatConfig, colors: TerminalColors, 
+                    skills: Optional[List[str]] = None, 
+                    include_skills: bool = False, 
+                    risks: Optional[str] = None,
+                    analyze: bool = False) -> str:
+    """Centralized API for invoking roles. All LLM calls pass through here."""
+    base_dir = os.path.dirname(SCRIPT_DIR)
+    
+    # 1. System Prompt Construction
+    system_prompt = construct_system_prompt(
+        base_dir, role, skills, include_skills, risks
+    )
+    
+    if analyze:
+        print(f"\n{colors.sys_color}=== [ANALYSIS: SYSTEM PROMPT] ==={colors.reset_code}")
+        print(system_prompt)
+        print(f"{colors.sys_color}==================================={colors.reset_code}\n")
+
+    # 2. Execution
+    messages = [{"role": "system", "content": system_prompt}]
+    process_turn(config, messages, colors, prompt_text=prompt)
+    
+    response = messages[-1]["content"]
+    
+    # 3. Post-Process Analysis
+    if analyze:
+        print(f"\n{colors.sys_color}=== [ANALYSIS: RESPONSE] ==={colors.reset_code}")
+        print(f"- Role: {role}")
+        print(f"- Response Length: {len(response)} chars")
+        print(f"- Code Blocks Detected: {'Yes' if '```' in response else 'No'}")
+        
+        # Specific check for gemma3n's behavior in Architect role
+        if role == "engineer" and "```" in response:
+            print(f"{colors.err_color}[WARNING] Architect leaked code blocks!{colors.reset_code}")
+        
+        print(f"{colors.sys_color}============================={colors.reset_code}\n")
+        
+    return response
+
+
 def main() -> None:
-    """Main execution routine."""
+    """Main execution routine for CLI usage."""
     parser = argparse.ArgumentParser(description="Invoke Role Wrapper")
     parser.add_argument("--role", required=True, help="Role name")
     parser.add_argument("--prompt", help="User prompt text")
@@ -57,6 +97,7 @@ def main() -> None:
         "--insecure", "-k", action="store_true",
         help="Skip SSL certificate verification"
     )
+    parser.add_argument("--analyze", action="store_true", help="Enable analysis of LLM interaction")
 
     # Internal / Fixed args
     parser.add_argument(
@@ -68,7 +109,7 @@ def main() -> None:
         default=True, help=argparse.SUPPRESS
     )
     parser.add_argument(
-        "--no-color", action="store_true", default=True, help=argparse.SUPPRESS
+        "--no-color", action="store_true", default=False, help=argparse.SUPPRESS
     )
     parser.add_argument("--system", help=argparse.SUPPRESS)
     parser.add_argument("--session-file", help=argparse.SUPPRESS)
@@ -81,6 +122,17 @@ def main() -> None:
         if not args.prompt:
             parser.error("the following arguments are required: --prompt (or provide via stdin)")
 
+        colors = TerminalColors(enable_color=not args.no_color)
+        from chat_api import build_base_url
+        base_url = build_base_url(args.host, args.port)
+        config = ChatConfig(
+            api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
+            model=args.model,
+            quiet_mode=args.quit,
+            stream_output=args.stream,
+            insecure=args.insecure
+        )
+
         include_skills = 'skills' in args
         skill_filter = None
         if include_skills:
@@ -89,11 +141,10 @@ def main() -> None:
             else:
                 skill_filter = parse_skills_arg(args.skills)
 
-        base_dir = os.path.dirname(SCRIPT_DIR)
-        args.system = construct_system_prompt(
-            base_dir, args.role, skill_filter, include_skills, args.risks
-        )
-        run_chat_session(args)
+        invoke_role_api(args.role, args.prompt, config, colors, 
+                        skills=skill_filter, include_skills=include_skills, 
+                        risks=args.risks, analyze=args.analyze)
+        
     except Exception as exc:  # pylint: disable=broad-exception-caught
         sys.stderr.write(f"Error: {exc}\n")
         sys.exit(1)

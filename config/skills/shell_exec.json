@@ -1,0 +1,57 @@
+{
+  "id": "shell_exec",
+  "name": "Shell Execution (Bash)",
+  "description": "Executes commands in a Linux Bash environment.",
+  "guidelines": [
+    "**PIPELINE RULE**: You are a filter. Input comes from STDIN. Output goes to STDOUT.",
+    "**NO LOOPS**: The system handles loops. Write the command for a SINGLE item if Processing is Per-Item.",
+    "**ATOMICITY**: Each step should perform exactly one transformation and pass the result to the next.",
+    "**ACCURACY**: For any size-related operation, ALWAYS use byte-output (e.g., `du -b`) to ensure consistent numeric sorting."
+  ],
+  "patterns": [
+    {
+      "task": "List files recursively",
+      "recommended": "find . -type f",
+      "input_type": "None",
+      "output_type": "List (File Paths)"
+    },
+    {
+      "task": "Filter text patterns",
+      "recommended": "grep \"pattern\"",
+      "input_type": "Stream",
+      "output_type": "Filtered Stream"
+    },
+    {
+      "task": "Get file metadata (Size in bytes)",
+      "recommended": "du -b \"$1\"",
+      "note": "Requires 'Processing: Per-Item'",
+      "input_type": "File Path",
+      "output_type": "Size (Bytes) + Path"
+    },
+    {
+      "task": "Read file content",
+      "recommended": "cat \"$1\"",
+      "note": "Requires 'Processing: Per-Item'",
+      "input_type": "File Path",
+      "output_type": "Content Stream"
+    },
+    {
+      "task": "Sort numerically (Ascending)",
+      "recommended": "sort -n",
+      "input_type": "List",
+      "output_type": "Sorted List"
+    },
+    {
+      "task": "Sort numerically (Descending)",
+      "recommended": "sort -rn",
+      "input_type": "List",
+      "output_type": "Sorted List"
+    },
+    {
+      "task": "Take top N lines",
+      "recommended": "head -n 1",
+      "input_type": "List",
+      "output_type": "Single Line / Sub-list"
+    }
+  ]
+}

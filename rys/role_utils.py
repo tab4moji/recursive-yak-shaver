@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Role Loading and Prompt Construction Utilities (v0.2)
-
-History:
-  1. 2026-02-07 Initial version
-  2. 2026-02-08 Added dynamic generation_policy injection (Code as Policy)
+Role Loading and Prompt Construction Utilities (v0.3)
+Adds 'Cheatsheet' injection from skills.
 """
 # pylint: disable=useless-return
 
@@ -30,6 +27,8 @@ def _get_skills_data(config_dir: str) -> str:
     skills_path = os.path.join(config_dir, "skills.json")
     if not os.path.exists(skills_path):
         skills_path = os.path.join(config_dir, "default_skills.json")
+    if not os.path.exists(skills_path):
+        return "[]" # Return empty list json if no file found
     return load_file_content(skills_path)
 
 
@@ -39,29 +38,8 @@ def _filter_skills_list(data: List[Dict[str, Any]], filter_ids: List[str]) -> Li
         item.get("id") for item in data
         if isinstance(item, dict) and "id" in item
     }
-    missing = [s for s in filter_ids if s not in available_ids]
-    if missing:
-        raise ValueError(f"Requested skills not found: {', '.join(missing)}")
-
+    # Relaxed check: Don't raise error if skill is missing, just ignore (fallback to general)
     return [item for item in data if isinstance(item, dict) and item.get("id") in filter_ids]
-
-
-def _filter_skills(data: Any, filter_ids: List[str]) -> Any:
-    """Filters skills data by ID."""
-    result = data
-
-    if isinstance(data, list):
-        result = _filter_skills_list(data, filter_ids)
-    elif isinstance(data, dict):
-        available_ids = set(data.keys())
-        missing = [s for s in filter_ids if s not in available_ids]
-        if missing:
-            raise ValueError(f"Requested skills not found: {', '.join(missing)}")
-        result = {k: v for k, v in data.items() if k in filter_ids}
-    else:
-        raise ValueError("skills.json has an unknown structure. Cannot filter.")
-
-    return result
 
 
 def load_skills_data(config_dir: str, filter_skills: Optional[List[str]]) -> Any:
@@ -69,14 +47,41 @@ def load_skills_data(config_dir: str, filter_skills: Optional[List[str]]) -> Any
     content = _get_skills_data(config_dir)
     try:
         data = json.loads(content)
-        if filter_skills is not None:
-            data = _filter_skills(data, filter_skills)
+        if filter_skills is not None and isinstance(data, list):
+            data = _filter_skills_list(data, filter_skills)
     except json.JSONDecodeError as exc:
-        if filter_skills is not None:
-            raise ValueError("skills.json is invalid JSON. Cannot apply filter.") from exc
-        # Fallback to empty list or raise is better.
-        raise ValueError(f"skills.json is invalid JSON: {exc}") from exc
+        print(f"Warning: skills.json is invalid. {exc}")
+        data = []
     return data
+
+
+def load_skill_detail(config_dir: str, skill_id: str) -> str:
+    """Loads detailed skill definition from config/skills/<id>.json"""
+    path = os.path.join(config_dir, "skills", f"{skill_id}.json")
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # チートシートをMarkdown形式に変換してプロンプト用に整形
+            lines = [f"### Skill Cheat Sheet: {data.get('name', skill_id)}"]
+
+            if "guidelines" in data:
+                lines.append("#### Guidelines")
+                for g in data["guidelines"]:
+                    lines.append(f"- {g}")
+
+            if "patterns" in data:
+                lines.append("#### Recommended Patterns (Few-Shot)")
+                for p in data["patterns"]:
+                    lines.append(f"- Task: {p['task']}")
+                    lines.append(f"  - Recommended: `{p['recommended']}`")
+                    lines.append(f"  - Input: {p.get('input_type', 'Any')} -> Output: {p.get('output_type', 'Any')}")
+
+            return "\n".join(lines)
+        except Exception:
+            return ""
+    return ""
 
 
 def load_risks_content(risks_path: str) -> str:
@@ -101,7 +106,7 @@ def construct_system_prompt(
     config_dir = os.path.join(base_dir, "config")
     parts = []
 
-    # 1. Base Role Definition
+    # 1. Base Role
     parts.append(load_file_content(os.path.join(roles_dir, f"role_{role_name}.md")))
 
     # 2. Common Constraints
@@ -109,30 +114,26 @@ def construct_system_prompt(
     if os.path.exists(common_file):
         parts.append("\n# Common Constraints\n" + load_file_content(common_file))
 
-    # 3. Skills & Policies
+    # 3. Skills & Cheatsheets
     if include_skills:
-        # Load the data object to extract policies
         skills_data = load_skills_data(config_dir, skill_filter)
-
-        # Dump for the main skills block
-        skills_text = json.dumps(skills_data, indent=2, ensure_ascii=False)
-        parts.append(f"\n# Available Skills definition\n```json\n{skills_text}\n```")
-
-        # Dynamic Policy Injection
-        # Normalize to list for iteration
-        skill_list = []
+        
+        # Add Cheatsheets (The "Context" for ICL)
+        cheatsheets = []
         if isinstance(skills_data, list):
-            skill_list = skills_data
-        elif isinstance(skills_data, dict):
-            # If dict-based skills (id -> content), just take values
-            skill_list = list(skills_data.values())
-
-        for skill in skill_list:
-            if isinstance(skill, dict):
-                policy = skill.get("generation_policy")
-                if policy:
-                    # Inject specific instructions for this skill
-                    parts.append(f"\n# Specific Instructions for [{skill.get('id', 'Unknown')}]\n{policy}")
+            for skill in skills_data:
+                cs = skill.get("cheatsheet")
+                if cs:
+                    cheatsheets.append(f"## Reference for [{skill.get('id')}]\n{cs}")
+        
+        if cheatsheets:
+            parts.append("\n# Tool Reference / Cheatsheets (USE THESE PATTERNS)\n" + "\n\n".join(cheatsheets))
+        
+        # Add Policy if exists
+        for skill in (skills_data if isinstance(skills_data, list) else []):
+            policy = skill.get("generation_policy")
+            if policy:
+                parts.append(f"\n# Specific Instructions for [{skill.get('id', 'Unknown')}]\n{policy}")
 
     # 4. Risks
     if risks_file:

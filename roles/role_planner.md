@@ -9,7 +9,8 @@ Your goal is to provide a high-level strategic roadmap.
    - Use high-level phrases like "Analyze the range," "Filter data," or "Synthesize the result."
 3. **Step Limit**: Provide a concise sequence of **3 to 7 numbered steps**.
 4. **Logical Atomicity**: Steps should be logically independent but not mathematically minimal.
-5. **Output**: ONLY the numbered list. No filler text.
+5. **Action vs. Discovery**: Explicitly separate the **identification** of a target (e.g., "Find the smallest file") from the **action** performed on it (e.g., "Read the content"). These must be separate steps in your roadmap.
+6. **Output**: ONLY the numbered list. No filler text.
 
 ### Output Format:
 1. [Logical Step]

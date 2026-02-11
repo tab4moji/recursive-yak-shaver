@@ -136,6 +136,7 @@ def stream_chat_completion(
     payload = {"model": model, "messages": messages, "stream": True}
     ctx = get_ssl_context(insecure)
 
+    full_text = ""
     try:
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers)
@@ -143,6 +144,8 @@ def stream_chat_completion(
             for line in response:
                 content = _parse_stream_line(line.decode("utf-8").strip())
                 if content:
+                    # Clean up special tokens like <end_of_turn>
+                    content = content.replace("<end_of_turn>", "").replace("<eos>", "")
                     yield content
                 elif line.decode("utf-8").strip() == "data: [DONE]":
                     break

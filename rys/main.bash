@@ -3,113 +3,101 @@
 # Stop execution on error
 set -e
 
-# --- Configuration & Environment Variables ---
+# Configuration & Environment Variables
 HOST="${RYS_LLM_HOST:-localhost}"
 PORT="${RYS_LLM_PORT:-11434}"
 MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 
-# Define common options
-LLM_OPTS="--host=${HOST} --port=${PORT} --model=${MODEL}"
+FROM_PHASE=1
+PROMPT=""
 
-rys_uuid=$(date +%Y%m%d_%H%M%S)
-
-# Paths
-INVOKER="./rys/invoke_role.py"
-GROUPER="./rys/group_requests.py"
-TEMP_TRANS="./tmp/.rys.${rys_uuid}.request.translated.txt"
-TEMP_DISP="./tmp/.rys.${rys_uuid}.request.dispatched.txt"
-TEMP_EXEC="./tmp/.rys.${rys_uuid}.exec_plan.tsv"
-TEMP_PLAN="./tmp/.rys.${rys_uuid}.request_plan.txt"
-TEMP_TITLES="./tmp/.rys.${rys_uuid}.titles.txt"
-RISKS_CONFIG="./config/risks.json"
+# Simple Argument Parsing
+for arg in "$@"; do
+    if [[ $arg == --from=* ]]; then
+        FROM_PHASE=${arg#--from=}
+    elif [[ -z "$PROMPT" ]]; then
+        PROMPT="$arg"
+    fi
+done
 
 # Ensure prompt
-if [ -z "$1" ]; then
-    echo "Usage: $0 \"Your prompt here\""
+if [ -z "$PROMPT" ]; then
+    echo "Usage: $0 \"Your prompt here\" [--from=N]"
     exit 1
 fi
 
-# --- Execution Flow ---
-
 mkdir -p ./tmp/
 
-echo ">>> 1. Translation Phase"
-${INVOKER} ${LLM_OPTS} --role=translater --prompt="$1" | tee "${TEMP_TRANS}"
+# Generate Hash from prompt
+prompt_hash=$(echo -n "$PROMPT" | md5sum | cut -c1-8)
+
+# Define Phase JSON paths
+P1_JSON="./tmp/.rys.${prompt_hash}.p1.json"
+P2_JSON="./tmp/.rys.${prompt_hash}.p2.json"
+P3_JSON="./tmp/.rys.${prompt_hash}.p3.json"
+P4_JSON="./tmp/.rys.${prompt_hash}.p4.json"
+P5_JSON="./tmp/.rys.${prompt_hash}.p5.json"
+
+common_args="--host ${HOST} --port ${PORT} --model ${MODEL}"
+echo ">>> Initializing Session (Hash: ${prompt_hash}, Starting from Phase: ${FROM_PHASE})"
+
+rys_uuid="${prompt_hash}"
+echo "Session ID: ${rys_uuid}"
+
+# --- Helper for Phase Control ---
+run_check() {
+    local phase_idx=$1
+    local json_path=$2
+    if [ "$FROM_PHASE" -gt "$phase_idx" ]; then
+        if [ -f "$json_path" ]; then
+            echo "[SKIP] Using cached results for Phase $phase_idx: $json_path"
+            return 1 # Skip
+        else
+            echo "[ERROR] Cache missing for required Phase $phase_idx: $json_path"
+            exit 1
+        fi
+    fi
+    return 0 # Run
+}
+
+# --- Execution ---
+
+echo -e "\n>>> 1. Translation Phase"
+if run_check 1 "${P1_JSON}"; then
+    python3 ./rys/phase1_translate.py --prompt "$PROMPT" --out-json "${P1_JSON}" ${common_args}
+else
+    python3 -c "import json; print(json.load(open('${P1_JSON}'))['translated_text'])"
+fi
 
 echo -e "\n>>> 2. Dispatch Phase"
-${INVOKER} ${LLM_OPTS} --role=dispatcher --skills --prompt="$(cat "${TEMP_TRANS}")" | tee "${TEMP_DISP}"
+if run_check 2 "${P2_JSON}"; then
+    python3 ./rys/phase2_dispatch.py --in-json "${P1_JSON}" --out-json "${P2_JSON}" ${common_args}
+else
+    python3 -c "import json; print(json.load(open('${P2_JSON}'))['dispatch_out'])"
+fi
 
 echo -e "\n>>> 3. Request Visualization Phase"
-# group_requests.py generates visualization on stdout AND writes execution plan to TEMP_EXEC
-if [ -f "${GROUPER}" ]; then
-    VISUAL_INPUT=$(cat "${TEMP_DISP}" | "${GROUPER}" --plan-file="${TEMP_EXEC}")
-    echo "${VISUAL_INPUT}" | ${INVOKER} ${LLM_OPTS} --role=titler --prompt="${VISUAL_INPUT}" | tee "${TEMP_TITLES}"
+if run_check 3 "${P3_JSON}"; then
+    python3 ./rys/phase3_visualize.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" ${common_args}
 else
-    echo "Warning: ${GROUPER} not found."
-    cat "${TEMP_DISP}"
+    python3 -c "import json; print(json.load(open('${P3_JSON}'))['titles_out'])"
 fi
 
-echo -e "\n>>> 4. Planning Phase (Grouped)"
-
-# Check if execution plan exists
-if [ ! -f "${TEMP_EXEC}" ] || [ ! -s "${TEMP_EXEC}" ]; then
-    echo "No valid execution plan found (or no skills assigned)."
-    exit 0
+echo -e "\n>>> 4. Strategic Planning Phase"
+if run_check 4 "${P4_JSON}"; then
+    python3 ./rys/phase4_plan.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
+else
+    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'\n{t[\"title\"]}\n{t[\"refined_out\"]}') for t in d['planned_topics']]"
 fi
 
-# Get job count
-TOTAL_JOBS=$(wc -l < "${TEMP_EXEC}" | tr -d ' ')
-echo "Total topics to execute: ${TOTAL_JOBS}"
+echo -e "\n>>> 5. Step-by-Step Coding Phase"
+if run_check 5 "${P5_JSON}"; then
+    python3 ./rys/phase5_code.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${rys_uuid}" ${common_args}
+else
+    python3 -c "import json; d=json.load(open('${P5_JSON}')); [print(f'\n{s[\"title\"]}\nFile: {s[\"path\"]}') for s in d['scripts']]"
+fi
 
-# Disable set -e temporarily to ensure the loop completes and output is seen
-set +e
+echo -e "\n>>> 6. Execution Loop (Interactive)"
+python3 ./rys/phase6_execute.py --in-json "${P5_JSON}"
 
-PROCESSED_JOBS=0
-while IFS=$'\t' read -r req_index current_skill topic || [ -n "$req_index" ]; do
-    [ -z "$req_index" ] && continue
-    ((PROCESSED_JOBS++))
-
-    # Extract only the REQUEST title line for this index from TEMP_TITLES
-    REQ_TITLE=$(grep "^REQUEST ${req_index}:" "${TEMP_TITLES}")
-
-    echo -e "\n---------------------------------------------------"
-    echo "${REQ_TITLE}"
-    echo "- TOPIC: ${topic}"
-    echo "Assigned Skill: ${current_skill}"
-
-    # Goal for the Planner is just the single topic
-    combined_goal="- TOPIC: ${topic}"
-
-    echo "  [Strategic Planning]"
-    PLAN_OUT=$(${INVOKER} ${LLM_OPTS} --role=planner --prompt="${combined_goal}" < /dev/null)
-    # Force newline before numbers if the LLM returned a single line, then indent
-    echo "${PLAN_OUT}" | sed 's/ \([0-9]\+\.\)/\n\1/g' | sed 's/^/  /'
-    echo "${PLAN_OUT}" > "${TEMP_PLAN}"
-
-    echo -e "\n  [Technical Analysis]"
-    TEMP_ENG="./tmp/.rys.${rys_uuid}.engineer_out.txt"
-    ENG_OUT=$(${INVOKER} ${LLM_OPTS} --role=engineer --skills="${current_skill}" --prompt="${combined_goal}" < /dev/null)
-    # Double indent (4 spaces total) for the content of Technical Analysis
-    echo "${ENG_OUT}" | sed 's/^/    /'
-    echo "${ENG_OUT}" > "${TEMP_ENG}"
-
-    echo -e "\n  [Workflow Synthesis]"
-    # Use the correct header "Technical Analysis" for the Refiner
-    REFINER_INPUT="[Strategic Planning]\n$(cat "${TEMP_PLAN}")\n\n[Technical Analysis]\n$(cat "${TEMP_ENG}")"
-    REFINED_OUT=$(${INVOKER} ${LLM_OPTS} --role=refiner --skills="${current_skill}" --prompt="${REFINER_INPUT}" < /dev/null)
-    echo "${REFINED_OUT}" | sed 's/ \([0-9]\+\.\)/\n\1/g' | sed 's/^/  /'
-
-    echo -e "\n  [Audit & Verification]"
-    AUDIT_OUT=$(${INVOKER} ${LLM_OPTS} --role=auditor --risks="${RISKS_CONFIG}" --prompt="${REFINED_OUT}" < /dev/null)
-    echo "${AUDIT_OUT}" | sed 's/^/  /'
-
-    if echo "${AUDIT_OUT}" | grep -q "\[FAIL\]"; then
-        echo -e "\n!!! AUDIT FAILED !!! Execution blocked for this topic."
-    fi
-
-done < "${TEMP_EXEC}"
-
-# Re-enable set -e
-set -e
-
-rm -f ./tmp/.rys.${rys_uuid}*
+echo -e "\nAll Done. Results stored in ./tmp/"

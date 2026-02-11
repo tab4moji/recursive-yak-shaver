@@ -82,7 +82,8 @@ def clear_console_line(text_width: int) -> None:
 def handle_interactive_output(
     stream_gen: Iterator[str],
     colors: TerminalColors,
-    status_msg: str
+    status_msg: str,
+    silent: bool = False
 ) -> str:
     """Handles output for interactive mode with UI updates."""
     ai_prefix = f"{colors.ai_color}AI  > {colors.reset_code}"
@@ -90,44 +91,46 @@ def handle_interactive_output(
     time_to_wait = True
 
     for chunk in stream_gen:
-        if time_to_wait:
+        if not silent and time_to_wait:
             clear_console_line(get_str_width(status_msg))
             sys.stdout.write(ai_prefix)
             sys.stdout.flush()
             time_to_wait = False
-        sys.stdout.write(chunk)
-        sys.stdout.flush()
+        
+        if not silent:
+            sys.stdout.write(chunk)
+            sys.stdout.flush()
         full_response += chunk
 
-    if time_to_wait:
+    if not silent and time_to_wait:
         clear_console_line(get_str_width(status_msg))
 
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+    if not silent:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
     return full_response
 
 
 def handle_quiet_output(
     stream_gen: Iterator[str],
-    stream_output: bool
+    stream_output: bool,
+    silent: bool = False
 ) -> str:
     """Handles output for quiet mode (pipes/scripts)."""
     full_response = ""
 
-    if stream_output:
-        for chunk in stream_gen:
+    for chunk in stream_gen:
+        if stream_output and not silent:
             sys.stdout.write(chunk)
             sys.stdout.flush()
-            full_response += chunk
-    else:
-        for chunk in stream_gen:
-            full_response += chunk
+        full_response += chunk
+
+    if not stream_output and not silent:
         sys.stdout.write(full_response)
         sys.stdout.flush()
 
-    if full_response and not full_response.endswith("\n"):
+    if not silent and full_response and not full_response.endswith("\n"):
         sys.stdout.write("\n")
         sys.stdout.flush()
-        full_response += "\n"
 
     return full_response

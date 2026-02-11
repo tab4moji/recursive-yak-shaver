@@ -41,9 +41,13 @@ def process_turn(
     )
 
     if not config.quiet_mode:
-        full_response = handle_interactive_output(stream_gen, colors, status_msg)
+        full_response = handle_interactive_output(
+            stream_gen, colors, status_msg, silent=config.silent_mode
+        )
     else:
-        full_response = handle_quiet_output(stream_gen, config.stream_output)
+        full_response = handle_quiet_output(
+            stream_gen, config.stream_output, silent=config.silent_mode
+        )
 
     if "[Connection Error]" in full_response:
         if messages and messages[-1]["role"] == "user":

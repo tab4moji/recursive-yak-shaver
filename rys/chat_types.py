@@ -18,6 +18,7 @@ class ChatConfig:
     quiet_mode: bool
     stream_output: bool
     insecure: bool = False
+    silent_mode: bool = False
 
     def __post_init__(self) -> None:
         """Validation after initialization."""
