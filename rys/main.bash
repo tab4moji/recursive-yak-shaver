@@ -10,11 +10,14 @@ MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 
 FROM_PHASE=1
 PROMPT=""
+AUTO_MODE=""
 
 # Simple Argument Parsing
 for arg in "$@"; do
     if [[ $arg == --from=* ]]; then
         FROM_PHASE=${arg#--from=}
+    elif [[ $arg == "--auto" ]]; then
+        AUTO_MODE="--auto"
     elif [[ -z "$PROMPT" ]]; then
         PROMPT="$arg"
     fi
@@ -29,7 +32,7 @@ fi
 mkdir -p ./tmp/
 
 # Generate Hash from prompt
-prompt_hash=$(echo -n "$PROMPT" | md5sum | cut -c1-8)
+prompt_hash=$(printf "%s" "$PROMPT" | md5sum | cut -c1-8)
 
 # Define Phase JSON paths
 P1_JSON="./tmp/.rys.${prompt_hash}.p1.json"
@@ -61,6 +64,11 @@ run_check() {
 }
 
 # --- Execution ---
+
+# Force clear sub-caches for phases >= FROM_PHASE
+for (( i=$FROM_PHASE; i<=5; i++ )); do
+    rm -f ./tmp/.rys.${prompt_hash}.*.p${i}.*.json
+done
 
 echo -e "\n>>> 1. Translation Phase"
 if run_check 1 "${P1_JSON}"; then
@@ -98,6 +106,6 @@ else
 fi
 
 echo -e "\n>>> 6. Execution Loop (Interactive)"
-python3 ./rys/phase6_execute.py --in-json "${P5_JSON}"
+python3 ./rys/phase6_execute.py --in-json "${P5_JSON}" ${AUTO_MODE}
 
 echo -e "\nAll Done. Results stored in ./tmp/"

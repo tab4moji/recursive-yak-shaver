@@ -21,8 +21,8 @@ def parse_steps(text: str) -> List[str]:
     Includes protection against redundant or hallucinated repetitions.
     """
     steps = []
-    # Matches: "1. text", "- Step 1: text", "Step 1: text", "* 1. text"
-    pattern = re.compile(r"^(?:[\-\*\s]*)(?:Step\s+)?(\d+)[\.\:]?\s*(.*)", re.IGNORECASE)
+    # Matches: "1. text", "- Step 1: text", "Milestone 1: text", etc.
+    pattern = re.compile(r"^(?:[\-\*\s]*)(?:(?:Step|Milestone)\s+)?(\d+)[\.\:]?\s*(.*)", re.IGNORECASE)
     
     seen_descriptions = set()
     for line in text.splitlines():

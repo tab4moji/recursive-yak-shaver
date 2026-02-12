@@ -22,9 +22,9 @@
       "output_type": "Filtered Stream"
     },
     {
-      "task": "Get file metadata (Size in bytes)",
+      "task": "Get file size in bytes",
       "recommended": "du -b \"$1\"",
-      "note": "Requires 'Processing: Per-Item'",
+      "note": "STRICTLY requires 'Processing: Per-Item' and '$1' placeholder.",
       "input_type": "File Path",
       "output_type": "Size (Bytes) + Path"
     },
@@ -46,6 +46,27 @@
       "recommended": "sort -rn",
       "input_type": "List",
       "output_type": "Sorted List"
+    },
+    {
+      "task": "Find the LARGEST (Biggest) file size",
+      "recommended": "sort -rn | head -n 1",
+      "note": "Use -rn (reverse numeric) for Biggest",
+      "input_type": "List",
+      "output_type": "Single Line"
+    },
+    {
+      "task": "Find the SMALLEST (Tiniest) file size",
+      "recommended": "sort -n | head -n 1",
+      "note": "Use -n (numeric) for Tiniest",
+      "input_type": "List",
+      "output_type": "Single Line"
+    },
+    {
+      "task": "Extract Path from 'du' or 'ls' output list",
+      "recommended": "cut -f2-",
+      "note": "Use this to isolate the filename from size-prefixed lines.",
+      "input_type": "List (Size + Path)",
+      "output_type": "List (Paths Only)"
     },
     {
       "task": "Take top N lines",

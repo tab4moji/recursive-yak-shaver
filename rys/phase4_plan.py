@@ -47,7 +47,22 @@ def plan_job(job, data, config, colors, risks_config, tmp_dir, prompt_hash):
 
     e_cache = f"{tmp_dir}/.rys.{topic_hash}.p4.2_engineer.json"
     eng_out = cached_call("engineer", goal, e_cache, config, colors, skills=[current_skill], include_skills=True)
-    refined_out = eng_out 
+    
+    # Defensive: Strip markdown code blocks and deduplicate lines
+    import re
+    cleaned = re.sub(r"```.*?```", "", eng_out, flags=re.DOTALL).strip()
+    
+    unique_lines = []
+    seen_lines = set()
+    for line in cleaned.splitlines():
+        l_strip = line.strip()
+        if l_strip and l_strip not in seen_lines:
+            unique_lines.append(line)
+            seen_lines.add(l_strip)
+    
+    refined_out = "\n".join(unique_lines)
+    if not refined_out:
+        refined_out = eng_out
 
     print(f"\n  [Strategic Roadmap (from Strategic Architect)]")
     for line in refined_out.splitlines():

@@ -72,9 +72,13 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
                 f"{skill_cheat_sheet}\n\n"
                 f"### Data Flow Context (CRITICAL)\n"
                 f"- **INPUT Data**: {io_hint}\n"
-                f"- **OUTPUT Goal**: Specify the type of data intended for the next step (e.g. List of files, Single number).\n\n"
+                f"- **OUTPUT Goal**: Specify the type of data intended for the next step (e.g. List of files, Single number).\n"
+                f"- **DATA FORMAT HINT**: Commands like `du -b` output `[Size]\\t[Path]`. Commands like `cat` only accept a clean `[Path]`. Use `cut -f2-` when transitioning from a size-list to a file-reader.\n\n"
                 f"### Total Plan Reference\n{refined_out}\n\n"
                 f"### Completed Steps\n{completed_steps}\n\n"
+                "### INTERNAL IDENTITY\n"
+                "- You are a SINGLE LINK in a long pipeline chain.\n"
+                "- You only handle the transformation from Step [i] to Step [i+1].\n\n"
                 "### CORE GUIDELINES\n"
                 "- **Scope**: Focus exclusively on implementing the Current Task.\n"
                 "- **Pipe Integration**: Provide the core command fragment. The system automatically manages pipe chaining.\n"
@@ -130,12 +134,25 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
             
             clean_snippet = "\n".join(clean_lines).strip()
 
-            # Parse Metadata (Move this BEFORE cleaning if we need to catch it from the raw)
+            # [FIX] Simple Quote Closer for common gemma3n errors
+            if clean_snippet.count('"') % 2 != 0:
+                if clean_snippet.endswith('$1'):
+                    clean_snippet += '"'
+                elif '"$1' in clean_snippet:
+                    clean_snippet += '"'
+
+            # --- Parse Metadata FIRST ---
             proc_match = re.search(r"# Processing:\s*(Per-Item|Whole)", raw_snippet, re.IGNORECASE)
             processing = proc_match.group(1).capitalize() if proc_match else "Whole"
 
             type_match = re.search(r"# Output Type:\s*(List|Single)", raw_snippet, re.IGNORECASE)
             output_type = type_match.group(1).capitalize() if type_match else "Single"
+
+            # --- Apply Smart-Fixes SECOND (to override LLM if needed) ---
+            if clean_snippet.startswith("cut") and ("$1" in clean_snippet or processing == "Per-Item"):
+                clean_snippet = clean_snippet.replace(' "$1"', '').replace(' "$item"', '').strip()
+                print(f"      [AUTO-FIX] Detected 'cut' misuse, converting to stream filter.")
+                processing = "Whole"
 
             # ==========================================
             # [FIX] Anti-Repetition Logic (Smart-Strip)
@@ -168,7 +185,18 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
                          print(f"      [AUTO-FIX] Multiple pipes detected. Kept last segment: '{clean_snippet}'")
             # ==========================================
 
-            # [FIX] Auto-Correction for $1
+            # [FIX] Auto-Correction for $1 and mandatory Per-Item tools
+            # Ensure standalone commands get their operands
+            for cmd in ["du", "cat", "rm", "mv", "cp", "ls"]:
+                if clean_snippet.strip() == cmd:
+                    clean_snippet += ' "$1"'
+                    print(f"      [AUTO-FIX] Appended operand to standalone '{cmd}'.")
+                elif clean_snippet.startswith(f"{cmd} ") and "$1" not in clean_snippet and "-" not in clean_snippet.split()[-1]:
+                    # If it has flags but no operand, and doesn't end with a flag
+                    if cmd in ["du", "cat", "rm"]:
+                        clean_snippet += ' "$1"'
+                        print(f"      [AUTO-FIX] Appended operand to flag-only '{cmd}'.")
+
             if "$1" in clean_snippet and processing == "Whole":
                 print(f"      [AUTO-FIX] Detected '$1' in snippet, forcing Processing: Per-Item")
                 processing = "Per-Item"
@@ -187,7 +215,9 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
 
         step_blocks = []
         for i, meta in enumerate(steps_metadata):
-            snippet = meta["snippet"]
+            snippet = meta["snippet"].strip()
+            if not snippet:
+                continue
             proc = meta["processing"].lower() if i > 0 else "whole"
 
             # Assembly-Time Correction

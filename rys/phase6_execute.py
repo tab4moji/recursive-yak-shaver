@@ -10,10 +10,13 @@ import os
 import argparse
 import json
 import subprocess
+from chat_ui import TerminalColors
 
 def main():
+    colors = TerminalColors(enable_color=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("--in-json", required=True)
+    parser.add_argument("--auto", action="store_true", help="Execute without prompting")
     args = parser.parse_args()
 
     with open(args.in_json, "r", encoding="utf-8") as f:
@@ -40,11 +43,19 @@ def main():
         
         try:
             with open(target_file, 'r', encoding='utf-8') as f:
-                print(f.read())
+                content = f.read()
+                print(content)
+                if len(content.strip().splitlines()) <= 2 and "#!" in content:
+                    print(f"{colors.err_color}[WARNING] This script looks incomplete (too short).{colors.reset_code}")
         except OSError:
             print("  (Could not read file)")
 
-        choice = input(">> Execute this script? [y/N]: ").strip().lower()
+        if args.auto:
+            choice = 'y'
+            print(">> Auto-executing...")
+        else:
+            choice = input(">> Execute this script? [y/N]: ").strip().lower()
+
         if choice == 'y':
             print(">> Running...")
             subprocess.run([interpreter, target_file], check=False)

@@ -144,8 +144,9 @@ def stream_chat_completion(
             for line in response:
                 content = _parse_stream_line(line.decode("utf-8").strip())
                 if content:
-                    # Clean up special tokens like <end_of_turn>
-                    content = content.replace("<end_of_turn>", "").replace("<eos>", "")
+                    # Clean up special tokens
+                    for token in ["<end_of_turn>", "<eos>", "<|file_separator|>", "<|end_of_text|>", "<|im_end|>"]:
+                        content = content.replace(token, "")
                     yield content
                 elif line.decode("utf-8").strip() == "data: [DONE]":
                     break
