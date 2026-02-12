@@ -2,12 +2,6 @@
   "id": "shell_exec",
   "name": "Shell Execution (Bash)",
   "description": "Executes commands in a Linux Bash environment.",
-  "guidelines": [
-    "**PIPELINE RULE**: You are a filter. Input comes from STDIN. Output goes to STDOUT.",
-    "**NO LOOPS**: The system handles loops. Write the command for a SINGLE item if Processing is Per-Item.",
-    "**ATOMICITY**: Each step should perform exactly one transformation and pass the result to the next.",
-    "**ACCURACY**: For any size-related operation, ALWAYS use byte-output (e.g., `du -b`) to ensure consistent numeric sorting."
-  ],
   "patterns": [
     {
       "task": "List files recursively",
@@ -24,14 +18,12 @@
     {
       "task": "Get file size in bytes",
       "recommended": "du -b \"$1\"",
-      "note": "STRICTLY requires 'Processing: Per-Item' and '$1' placeholder.",
       "input_type": "File Path",
       "output_type": "Size (Bytes) + Path"
     },
     {
       "task": "Read file content",
       "recommended": "cat \"$1\"",
-      "note": "Requires 'Processing: Per-Item'",
       "input_type": "File Path",
       "output_type": "Content Stream"
     },
@@ -48,31 +40,28 @@
       "output_type": "Sorted List"
     },
     {
-      "task": "Find the LARGEST (Biggest) file size",
+      "task": "Find the LARGEST (Biggest) result",
       "recommended": "sort -rn | head -n 1",
-      "note": "Use -rn (reverse numeric) for Biggest",
       "input_type": "List",
       "output_type": "Single Line"
     },
     {
-      "task": "Find the SMALLEST (Tiniest) file size",
+      "task": "Find the SMALLEST (Tiniest) result",
       "recommended": "sort -n | head -n 1",
-      "note": "Use -n (numeric) for Tiniest",
       "input_type": "List",
       "output_type": "Single Line"
     },
     {
-      "task": "Extract Path from 'du' or 'ls' output list",
+      "task": "Extract Path from size-prefixed stream",
       "recommended": "cut -f2-",
-      "note": "Use this to isolate the filename from size-prefixed lines.",
       "input_type": "List (Size + Path)",
       "output_type": "List (Paths Only)"
     },
     {
-      "task": "Take top N lines",
+      "task": "Select the single top result",
       "recommended": "head -n 1",
       "input_type": "List",
-      "output_type": "Single Line / Sub-list"
+      "output_type": "Single Line"
     }
   ]
 }

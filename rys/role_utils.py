@@ -56,26 +56,20 @@ def load_skills_data(config_dir: str, filter_skills: Optional[List[str]]) -> Any
 
 
 def load_skill_detail(config_dir: str, skill_id: str) -> str:
-    """Loads detailed skill definition from config/skills/<id>.json"""
+    """Loads detailed skill definition from config/skills/<id>.json as GoodParts."""
     path = os.path.join(config_dir, "skills", f"{skill_id}.json")
     if os.path.exists(path):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # チートシートをMarkdown形式に変換してプロンプト用に整形
-            lines = [f"### Skill Cheat Sheet: {data.get('name', skill_id)}"]
-
-            if "guidelines" in data:
-                lines.append("#### Guidelines")
-                for g in data["guidelines"]:
-                    lines.append(f"- {g}")
+            lines = [f"### GoodParts Cheat Sheet: {data.get('name', skill_id)}"]
 
             if "patterns" in data:
-                lines.append("#### Recommended Patterns (Few-Shot)")
+                lines.append("#### Recommended Syntax (Best Practice)")
                 for p in data["patterns"]:
-                    lines.append(f"- Task: {p['task']}")
-                    lines.append(f"  - Recommended: `{p['recommended']}`")
+                    lines.append(f"- **Task**: {p['task']}")
+                    lines.append(f"  - **Recommended**: `{p['recommended']}`")
                     lines.append(f"  - Input: {p.get('input_type', 'Any')} -> Output: {p.get('output_type', 'Any')}")
 
             return "\n".join(lines)
@@ -109,11 +103,6 @@ def construct_system_prompt(
     # 1. Base Role
     parts.append(load_file_content(os.path.join(roles_dir, f"role_{role_name}.md")))
 
-    # 2. Common Constraints
-    common_file = os.path.join(roles_dir, "role_common_constraints.md")
-    if os.path.exists(common_file):
-        parts.append("\n# Common Constraints\n" + load_file_content(common_file))
-
     # 3. Skills & Cheatsheets
     if include_skills:
         skills_data = load_skills_data(config_dir, skill_filter)
@@ -129,12 +118,6 @@ def construct_system_prompt(
         if cheatsheets:
             parts.append("\n# Tool Reference / Cheatsheets (USE THESE PATTERNS)\n" + "\n\n".join(cheatsheets))
         
-        # Add Policy if exists
-        for skill in (skills_data if isinstance(skills_data, list) else []):
-            policy = skill.get("generation_policy")
-            if policy:
-                parts.append(f"\n# Specific Instructions for [{skill.get('id', 'Unknown')}]\n{policy}")
-
     # 4. Risks
     if risks_file:
         r_path = risks_file if os.path.exists(risks_file) else os.path.join(config_dir, risks_file)
