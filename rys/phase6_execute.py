@@ -18,6 +18,8 @@ def main():
     parser.add_argument("--in-json", required=True)
     parser.add_argument("--auto", action="store_true", help="Execute without prompting")
     args = parser.parse_args()
+    if args.auto:
+        print(f"{colors.sys_color}[DEBUG] Auto-mode is ENABLED{colors.reset_code}")
 
     if not os.path.exists(args.in_json):
         print(f">>> Skipping Phase 6: Input file {args.in_json} not found.")

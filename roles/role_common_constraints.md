@@ -5,7 +5,7 @@
      - ACTION: Sort numbers from LOW to HIGH.
      - COMMAND: `sort -n` (Ascending).
      - RESULT: The SMALLEST value is now on the FIRST line.
-     - SELECTOR: `head -n 1` (Takes the first line of the list. **DO NOT add a filename**).
+     - SELECTOR: `head -n 1` (Takes the first line of the list. Acts exclusively on the stream).
    - **To find the LARGEST (Biggest/Maximum)**:
      - ACTION: Sort numbers from HIGH to LOW.
      - COMMAND: `sort -rn` (Reverse Numeric).

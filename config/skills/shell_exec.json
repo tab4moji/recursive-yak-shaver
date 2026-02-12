@@ -1,67 +1,39 @@
 {
   "id": "shell_exec",
   "name": "Shell Execution (Bash)",
-  "description": "Executes commands in a Linux Bash environment.",
+  "description": "Essential file and text processing tools.",
   "patterns": [
     {
-      "task": "List files recursively",
-      "recommended": "find . -type f",
-      "input_type": "None",
-      "output_type": "List (File Paths)"
+      "task": "Recursively find files",
+      "recommended": "find . -type f"
     },
     {
-      "task": "Filter text patterns",
-      "recommended": "grep \"pattern\"",
-      "input_type": "Stream",
-      "output_type": "Filtered Stream"
+      "task": "Filter text with pattern",
+      "recommended": "grep \"pattern\""
     },
     {
       "task": "Get file size in bytes",
-      "recommended": "du -b \"$1\"",
-      "input_type": "File Path",
-      "output_type": "Size (Bytes) + Path"
+      "recommended": "du -b \"$1\""
     },
     {
       "task": "Read file content",
-      "recommended": "cat \"$1\"",
-      "input_type": "File Path",
-      "output_type": "Content Stream"
+      "recommended": "cat \"$1\""
     },
     {
-      "task": "Sort numerically (Ascending)",
-      "recommended": "sort -n",
-      "input_type": "List",
-      "output_type": "Sorted List"
+      "task": "Sort numerically (Smallest first)",
+      "recommended": "sort -n"
     },
     {
-      "task": "Sort numerically (Descending)",
-      "recommended": "sort -rn",
-      "input_type": "List",
-      "output_type": "Sorted List"
+      "task": "Sort numerically (Largest first)",
+      "recommended": "sort -rn"
     },
     {
-      "task": "Find the LARGEST (Biggest) result",
-      "recommended": "sort -rn | head -n 1",
-      "input_type": "List",
-      "output_type": "Single Line"
+      "task": "Isolate path field",
+      "recommended": "cut -f2-"
     },
     {
-      "task": "Find the SMALLEST (Tiniest) result",
-      "recommended": "sort -n | head -n 1",
-      "input_type": "List",
-      "output_type": "Single Line"
-    },
-    {
-      "task": "Extract Path from size-prefixed stream",
-      "recommended": "cut -f2-",
-      "input_type": "List (Size + Path)",
-      "output_type": "List (Paths Only)"
-    },
-    {
-      "task": "Select the single top result",
-      "recommended": "head -n 1",
-      "input_type": "List",
-      "output_type": "Single Line"
+      "task": "Select the first line",
+      "recommended": "head -n 1"
     }
   ]
 }

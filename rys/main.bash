@@ -65,10 +65,10 @@ else
     done
 fi
 
-for p in "${RE_RUN_LIST[@]}"; do
-    rm -f ./tmp/.rys.${prompt_hash}.*.p${p}.*.json
-    rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
-done
+# for p in "${RE_RUN_LIST[@]}"; do
+#    rm -f ./tmp/.rys.${prompt_hash}.*.p${p}.*.json
+#    rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
+# done
 
 echo ">>> Initializing Session (Hash: ${prompt_hash}, Starting from Phase: ${MIN_PHASE}, Stopping after Phase: ${STOP_PHASE})"
 if [[ ! $FROM_PHASE =~ ^[0-9]+$ ]]; then
@@ -82,6 +82,9 @@ echo "Session ID: ${rys_uuid}"
 run_check() {
     local phase_idx=$1
     local json_path=$2
+    if [ "$MIN_PHASE" -eq "$phase_idx" ]; then
+        return 0 # Always Run starting phase
+    fi
     if [ "$MIN_PHASE" -gt "$phase_idx" ]; then
         if [ -f "$json_path" ]; then
             echo "[SKIP] Using cached results for Phase $phase_idx: $json_path"

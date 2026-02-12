@@ -111,9 +111,14 @@ def construct_system_prompt(
         cheatsheets = []
         if isinstance(skills_data, list):
             for skill in skills_data:
+                s_id = skill.get("id")
                 cs = skill.get("cheatsheet")
+                if not cs and s_id:
+                    # Fallback to loading from skills/<id>.json
+                    cs = load_skill_detail(config_dir, s_id)
+                
                 if cs:
-                    cheatsheets.append(f"## Reference for [{skill.get('id')}]\n{cs}")
+                    cheatsheets.append(f"## Reference for [{s_id}]\n{cs}")
         
         if cheatsheets:
             parts.append("\n# Tool Reference / Cheatsheets (USE THESE PATTERNS)\n" + "\n\n".join(cheatsheets))

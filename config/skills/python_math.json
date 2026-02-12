@@ -1,0 +1,11 @@
+{
+  "id": "python_math",
+  "name": "Python Mathematics",
+  "description": "Numerical and symbolic calculations.",
+  "patterns": [
+    {
+      "task": "Calculate primes up to N",
+      "recommended": "python3 -c "from sympy import primerange; print(list(primerange(1, 2000)))""
+    }
+  ]
+}

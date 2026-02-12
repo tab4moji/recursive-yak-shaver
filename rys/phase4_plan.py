@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Phase 4: Strategic Planning (v1.1)
-Processes each topic through Planner, Engineer, Refiner, and Auditor roles.
+Phase 4: Strategic Planning (v1.2)
+Processes each topic through the Engineer role to create a logical roadmap.
 Outputs a JSON with the refined workflow steps.
 """
 
@@ -10,10 +10,11 @@ import sys
 import os
 import argparse
 import json
+import hashlib
 from chat_types import ChatConfig
 from chat_ui import TerminalColors
 from chat_api import build_base_url, verify_connection
-from phase_utils import call_role, parse_steps
+from phase_utils import call_role
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
@@ -21,6 +22,7 @@ if SCRIPT_DIR not in sys.path:
 
 def cached_call(role: str, prompt: str, cache_path: str, config, colors, 
                 skills=None, include_skills=False, risks=None) -> str:
+    """Wrapper for role calls with local caching."""
     if os.path.exists(cache_path):
         with open(cache_path, "r", encoding="utf-8") as f_in:
             cached_data = json.load(f_in)
@@ -29,52 +31,52 @@ def cached_call(role: str, prompt: str, cache_path: str, config, colors,
 
     content = call_role(SCRIPT_DIR, role, prompt, config, colors, 
                         skills=skills, include_skills=include_skills, risks=risks)
+    
     with open(cache_path, "w", encoding="utf-8") as f_out:
         json.dump({"role": role, "content": content}, f_out, ensure_ascii=False, indent=2)
     return content
 
-def plan_job(job, data, config, colors, risks_config, tmp_dir, prompt_hash):
-    import hashlib
+def plan_job(job, data, config, colors, tmp_dir, prompt_hash):
+    """Processes a single task through the Engineer role."""
     req_idx, current_skill, topic = job["req_idx"], job["skill"], job["topic"]
     t_hash = hashlib.md5(topic.encode()).hexdigest()[:8]
     topic_hash = f"{prompt_hash}.req_{req_idx}_{t_hash}"
-    titles_lines = data["titles_out"].splitlines()
+    
+    titles_lines = data.get("titles_out", "").splitlines()
     req_title = next((l for l in titles_lines if l.startswith(f"REQUEST {req_idx}:")), f"REQUEST {req_idx}:")
     
     print(f"\nPlanning {req_title}")
     print(f"Topic: {topic}")
-    goal = f"- TOPIC: {topic}"
+    
+    goal_prompt = (
+        f"### TOPIC\n{topic}\n\n"
+        f"### INSTRUCTIONS\n"
+        f"- Break down the task into logical milestones.\n"
+        f"- Focus on data flow and transformations.\n"
+    )
 
-    e_cache = f"{tmp_dir}/.rys.{topic_hash}.p4.2_engineer.json"
-    eng_out = cached_call("engineer", goal, e_cache, config, colors, skills=[current_skill], include_skills=True)
+    e_cache = f"{tmp_dir}/.rys.{topic_hash}.p4_engineer.json"
+    refined_out = cached_call(
+        "engineer", goal_prompt, e_cache, config, colors, 
+        skills=[current_skill], include_skills=True, risks="./config/risks.json"
+    )
     
-    # Defensive: Strip markdown code blocks and deduplicate lines
-    import re
-    cleaned = re.sub(r"```.*?```", "", eng_out, flags=re.DOTALL).strip()
-    
-    unique_lines = []
-    seen_lines = set()
-    for line in cleaned.splitlines():
-        l_strip = line.strip()
-        if l_strip and l_strip not in seen_lines:
-            unique_lines.append(line)
-            seen_lines.add(l_strip)
-    
-    refined_out = "\n".join(unique_lines)
-    if not refined_out:
-        refined_out = eng_out
-
-    print(f"\n  [Strategic Roadmap (from Strategic Architect)]")
+    print(f"\n  [Strategic Roadmap]")
     for line in refined_out.splitlines():
-        print(f"    {line}")
-    a_cache = f"{tmp_dir}/.rys.{topic_hash}.p4.4_auditor.json"
-    audit_out = cached_call("auditor", refined_out, a_cache, config, colors, risks=risks_config)
+        if line.strip():
+            print(f"    {line}")
 
-    if not refined_out.strip() or "[FAIL]" in audit_out:
-        print("Plan failed refinement or audit. Skipping.")
+    if not refined_out.strip():
+        print("Plan generation failed. Skipping.")
         return None
 
-    return {"req_idx": req_idx, "skill": current_skill, "title": req_title, "topic": topic, "refined_out": refined_out}
+    return {
+        "req_idx": req_idx, 
+        "skill": current_skill, 
+        "title": req_title, 
+        "topic": topic, 
+        "refined_out": refined_out
+    }
 
 def main():
     parser = argparse.ArgumentParser()
@@ -119,7 +121,7 @@ def main():
     data["planned_topics"] = []
 
     for job in exec_plan:
-        res = plan_job(job, data, config, colors, "./config/risks.json", tmp_dir, args.uuid)
+        res = plan_job(job, data, config, colors, tmp_dir, args.uuid)
         if res:
             data["planned_topics"].append(res)
 

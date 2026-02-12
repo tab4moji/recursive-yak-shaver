@@ -1,0 +1,11 @@
+{
+  "id": "python_script",
+  "name": "Python Scripting",
+  "description": "General purpose automation.",
+  "patterns": [
+    {
+      "task": "Process text with logic",
+      "recommended": "python3 -c "import sys; print(sys.stdin.read().upper())""
+    }
+  ]
+}
