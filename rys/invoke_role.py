@@ -83,7 +83,7 @@ def invoke_role_api(role: str, prompt: str, config: ChatConfig, colors: Terminal
 def main() -> None:
     """Main execution routine for CLI usage."""
     parser = argparse.ArgumentParser(description="Invoke Role Wrapper")
-    parser.add_argument("--role", required=True, help="Role name")
+    parser.add_argument("--role", default="gemma", help="Role name")
     parser.add_argument("--prompt", help="User prompt text")
     parser.add_argument(
         "--skills", nargs='?', const='__ALL__', default=argparse.SUPPRESS,

@@ -47,6 +47,7 @@ Your goal is to implement a single, atomic code segment that acts as a **pipe se
 
 1. **Processing: Whole**
 * Applies to commands that process an entire stream or list at once (e.g., `grep`, `sort`, `uniq`, `awk`, `head`, `tail`, `cut`).
+* **The Selector Rule**: `head` and `tail` select lines from the *stream*. They **NEVER** take a `"$1"` argument.
 * **Text Transformation Rule**: If you are modifying the text of the stream (e.g., removing a field), ALWAYS use `Whole` mode.
 * The system integrates these using standard pipes (`|`).
 

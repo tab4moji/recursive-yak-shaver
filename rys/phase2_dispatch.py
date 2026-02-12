@@ -28,6 +28,12 @@ def main():
     parser.add_argument("--out-json", required=True)
     args = parser.parse_args()
 
+    if not os.path.exists(args.in_json):
+        print(f">>> Skipping Phase 2: Input file {args.in_json} not found.")
+        with open(args.out_json, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        return
+
     with open(args.in_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 

@@ -86,12 +86,18 @@ def main():
     parser.add_argument("--uuid", required=True)
     args = parser.parse_args()
 
+    if not os.path.exists(args.in_json):
+        print(f">>> Skipping Phase 4: Input file {args.in_json} not found.")
+        with open(args.out_json, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        return
+
     with open(args.in_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     exec_plan = []
     req_idx = 1
-    for key, descriptions in data["groups"].items():
+    for key, descriptions in data.get("groups", {}).items():
         if not (key.startswith("IDONTKNOW__") or key == "UNKNOWN"):
             for desc in descriptions:
                 exec_plan.append({"req_idx": req_idx, "skill": key, "topic": desc})
@@ -99,6 +105,9 @@ def main():
 
     if not exec_plan:
         print("No valid tasks to plan.")
+        # Create output JSON even if empty to satisfy pipeline
+        with open(args.out_json, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
         return
 
     base_url = build_base_url(args.host, args.port)

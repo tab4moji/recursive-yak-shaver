@@ -149,10 +149,12 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
             output_type = type_match.group(1).capitalize() if type_match else "Single"
 
             # --- Apply Smart-Fixes SECOND (to override LLM if needed) ---
-            if clean_snippet.startswith("cut") and ("$1" in clean_snippet or processing == "Per-Item"):
-                clean_snippet = clean_snippet.replace(' "$1"', '').replace(' "$item"', '').strip()
-                print(f"      [AUTO-FIX] Detected 'cut' misuse, converting to stream filter.")
-                processing = "Whole"
+            # Special Smart-Fix for 'cut', 'head', 'tail' misuse
+            if any(clean_snippet.startswith(c) for c in ["cut", "head", "tail"]):
+                if "$1" in clean_snippet or processing == "Per-Item":
+                    clean_snippet = clean_snippet.replace(' "$1"', '').replace(' "$item"', '').strip()
+                    print(f"      [AUTO-FIX] Detected '{clean_snippet.split()[0]}' misuse, converting to stream filter.")
+                    processing = "Whole"
 
             # ==========================================
             # [FIX] Anti-Repetition Logic (Smart-Strip)
@@ -302,6 +304,13 @@ def main():
     parser.add_argument("--out-json", required=True)
     parser.add_argument("--uuid", required=True)
     args = parser.parse_args()
+
+    if not os.path.exists(args.in_json):
+        print(f">>> Skipping Phase 5: Input file {args.in_json} not found.")
+        # Create an empty or minimal output JSON to satisfy the pipeline if needed
+        with open(args.out_json, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        return
 
     with open(args.in_json, "r", encoding="utf-8") as f:
         data = json.load(f)

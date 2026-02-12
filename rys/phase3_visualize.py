@@ -29,10 +29,17 @@ def main():
     parser.add_argument("--out-json", required=True)
     args = parser.parse_args()
 
+    if not os.path.exists(args.in_json):
+        print(f">>> Skipping Phase 3: Input file {args.in_json} not found.")
+        with open(args.out_json, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        return
+
     with open(args.in_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    groups = group_requests.parse_input(data["dispatch_out"])
+    dispatch_out = data.get("dispatch_out", "")
+    groups = group_requests.parse_input(dispatch_out)
     
     visual_input = ""
     req_index = 1

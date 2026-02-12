@@ -19,6 +19,10 @@ def main():
     parser.add_argument("--auto", action="store_true", help="Execute without prompting")
     args = parser.parse_args()
 
+    if not os.path.exists(args.in_json):
+        print(f">>> Skipping Phase 6: Input file {args.in_json} not found.")
+        return
+
     with open(args.in_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 
