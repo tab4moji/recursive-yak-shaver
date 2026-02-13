@@ -9,28 +9,38 @@
 - **Atomic Command Fragments**: The system enforces "One Command per Step" logic. Snippets are treated as pure pipe segments, stripped of redundant prefixes or nested pipe chains.
 - **Affirmative Control**: All role directives and cheatsheets use purely affirmative language ("Do this") to maximize LLM instruction-following and stability.
 
-## 🛠 The 6-Phase Pipeline
+## 🛠 The 5-Phase Pipeline
 
 ### Phase 1: Translation (Translater)
 Normalizes ambiguous, multi-lingual user input into clear, standardized English tasks.
 
 ### Phase 2: Dispatch (Dispatcher)
-Categorizes tasks into specific domains and assigns the appropriate **Skill** (e.g., `shell_exec`, `python_math`). This phase acts as the primary router for domain-specific knowledge.
+Categorizes tasks into specific domains and assigns the appropriate **Skill** (e.g., `shell_exec`, `python_math`).
 
-### Phase 3: Visualization (Titler)
-Organizes tasks into logical request groups with descriptive titles for transparency.
+### Phase 3: Strategic Planning (Planner & Titler)
+Designs a structured roadmap using the **TOON (YAML) format**. The Planner maps the topic to atomic API-like operations based on the skill cheat sheet, ensuring "current directory" is correctly interpreted as `./`.
 
-### Phase 4: Strategic Planning (Engineer)
-Utilizes the assigned **Skill Context** to design a roadmap. The Engineer breaks down the goal into atomic milestones, ensuring each milestone represents exactly one logical transformation (e.g., "Milestone 3: Sort data").
+### Phase 4: Step-by-Step Coding (Coder)
+Implements the roadmap milestones. The Coder generates atomic command fragments based on the skill cheatsheet patterns.
 
-### Phase 5: Step-by-Step Coding (Coder)
-Implements the roadmap milestones. For each step:
-1. **Context Injection**: The Coder receives the specific milestone task and the corresponding **Skill Cheatsheet** (GoodParts).
-2. **Affirmative Implementation**: The Coder generates a single, atomic command fragment based on the cheatsheet patterns.
-3. **Pipe Stripper**: The system automatically extracts the last segment of the generated code to ensure no redundancy and strict adherence to the pipeline flow.
+### Phase 5: Execution Loop
+Aggregates snippets into a native shell or Python orchestrator and executes the sequence.
 
-### Phase 6: Execution Loop
-Aggregates snippets into a native shell or Python orchestrator, provides a final review, and executes the sequence.
+## 🕹 Usage & Phase Control (`--from`)
+
+You can control the pipeline execution and caching behavior using the `--from` parameter.
+
+| Command Pattern | Mode | Description |
+| :--- | :--- | :--- |
+| `./rys/main.bash "..."` | **Default** | Runs all phases from 1 to 5. |
+| `--from=N` | **Resume** | Re-runs from Phase N to 5, clearing caches for Phase N and beyond. |
+| `--from=N,M` | **Selective** | Runs only the specified phases (e.g., `3,3` to only re-run Planning). |
+| `--from=,N` | **Cache-Only** | Runs from Phase 1 to N using **existing caches only** (no re-generation). |
+
+### Examples:
+- **Debug Planning**: `./rys/main.bash "..." --from=3,3` (Re-runs only Phase 3)
+- **Review up to Code**: `./rys/main.bash "..." --from=,4` (Shows the plan and code using cached results, then stops)
+- **Full Reset from Dispatch**: `./rys/main.bash "..." --from=2` (Re-generates everything starting from Phase 2)
 
 ## 📖 Skills & Cheatsheets
 
