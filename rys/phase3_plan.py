@@ -77,7 +77,8 @@ def plan_job(job, data, config, colors, tmp_dir, prompt_hash):
         # Fallback if parsing fails
         refined_out = raw_out
     
-    # Compact output: Topic + Roadmap on the same line
+    # Print raw output (YAML) then compact Roadmap
+    print(raw_out)
     plan_display = refined_out.replace("\n", " ")
     print(f"Topic: {topic} [Strategic Roadmap] {plan_display}")
 
@@ -90,7 +91,8 @@ def plan_job(job, data, config, colors, tmp_dir, prompt_hash):
         "skill": current_skill, 
         "title": req_title, 
         "topic": topic, 
-        "refined_out": refined_out
+        "refined_out": refined_out,
+        "content": raw_out
     }
 
 def main():

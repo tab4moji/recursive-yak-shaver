@@ -150,7 +150,7 @@ echo -e "\n>>> 3. Strategic Planning Phase"
 if run_check 3 "${P3_JSON}"; then
     python3 ./rys/phase3_plan.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
-    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'\n{t[\"title\"]}\n{t[\"refined_out\"]}') for t in d.get('planned_topics', [])]"
+    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'\n{t[\"title\"]}\n{t.get(\"content\", \"\")}\nTopic: {t[\"topic\"]} [Strategic Roadmap] {t[\"refined_out\"].replace(\"\\n\", \" \")}') for t in d.get('planned_topics', [])]"
 fi
 check_stop 3
 
