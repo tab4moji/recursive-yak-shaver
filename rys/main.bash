@@ -34,47 +34,61 @@ mkdir -p ./tmp/
 # Generate Hash from prompt
 prompt_hash=$(printf "%s" "$PROMPT" | md5sum | cut -c1-8)
 
-# Define Phase JSON paths
+# Define Phase JSON paths (v2.0 - 5 Phases Pipeline)
 P1_JSON="./tmp/.rys.${prompt_hash}.p1.json"
 P2_JSON="./tmp/.rys.${prompt_hash}.p2.json"
 P3_JSON="./tmp/.rys.${prompt_hash}.p3.json"
 P4_JSON="./tmp/.rys.${prompt_hash}.p4.json"
-P5_JSON="./tmp/.rys.${prompt_hash}.p5.json"
 
 common_args="--host ${HOST} --port ${PORT} --model ${MODEL}"
 
 # Force clear sub-caches for specified phases
 IFS=',' read -ra TARGET_PHASES <<< "$FROM_PHASE"
 RE_RUN_LIST=()
-MIN_PHASE=6
-STOP_PHASE=6
+MIN_PHASE=5
+STOP_PHASE=5
+ONLY_CACHE_USE=""
 
 if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
-    # Traditional behavior: from N to 6
-    for (( i=$FROM_PHASE; i<=5; i++ )); do
+    # Traditional behavior: from N to 5
+    for (( i=$FROM_PHASE; i<=4; i++ )); do
         RE_RUN_LIST+=($i)
     done
     MIN_PHASE=$FROM_PHASE
-    STOP_PHASE=6
+    STOP_PHASE=5
+elif [[ $FROM_PHASE == ,* ]]; then
+    # Compact behavior: use all caches up to N
+    STOP_PHASE=${FROM_PHASE#,}
+    MIN_PHASE=1
+    ONLY_CACHE_USE="true"
+    # No phases to re-run/clear
 else
     # Explicit list: only specific phases, then stop at max
     for p in "${TARGET_PHASES[@]}"; do
-        RE_RUN_LIST+=($p)
-        if [ "$p" -lt "$MIN_PHASE" ]; then MIN_PHASE=$p; fi
-        if [ "$p" -gt "$STOP_PHASE" ] || [ "$STOP_PHASE" -eq 6 ]; then STOP_PHASE=$p; fi
+        if [ -n "$p" ]; then
+            RE_RUN_LIST+=($p)
+            if [ "$p" -lt "$MIN_PHASE" ]; then MIN_PHASE=$p; fi
+            if [ "$p" -gt "$STOP_PHASE" ] || [ "$STOP_PHASE" -eq 5 ]; then STOP_PHASE=$p; fi
+        fi
     done
 fi
 
-for p in "${RE_RUN_LIST[@]}"; do
-    if [ "$p" -ge 4 ]; then
-        rm -f ./tmp/.rys.${prompt_hash}.*.p${p}.*.json
-        rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
-    fi
-done
+if [ -z "$ONLY_CACHE_USE" ]; then
+    for p in "${RE_RUN_LIST[@]}"; do
+        if [ "$p" -ge 3 ]; then
+            rm -f ./tmp/.rys.${prompt_hash}.*.p${p}*
+            rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
+        fi
+    done
+fi
 
 echo ">>> Initializing Session (Hash: ${prompt_hash}, Starting from Phase: ${MIN_PHASE}, Stopping after Phase: ${STOP_PHASE})"
 if [[ ! $FROM_PHASE =~ ^[0-9]+$ ]]; then
-    echo "Target re-run phases: ${RE_RUN_LIST[*]}"
+    if [ -n "$ONLY_CACHE_USE" ]; then
+        echo "Mode: Only use caches up to Phase ${STOP_PHASE}"
+    else
+        echo "Target re-run phases: ${RE_RUN_LIST[*]}"
+    fi
 fi
 
 rys_uuid="${prompt_hash}"
@@ -84,16 +98,23 @@ echo "Session ID: ${rys_uuid}"
 run_check() {
     local phase_idx=$1
     local json_path=$2
+
+    # In ONLY_CACHE_USE mode, always try to use cache first if it exists
+    if [ -n "$ONLY_CACHE_USE" ] && [ -f "$json_path" ]; then
+        echo "[SKIP] Using cached results for Phase $phase_idx: $json_path"
+        return 1 # Skip (Use cache)
+    fi
+
     if [ "$MIN_PHASE" -eq "$phase_idx" ]; then
-        return 0 # Always Run starting phase
+        return 0 # Always Run starting phase (unless in ONLY_CACHE_USE mode handled above)
     fi
     if [ "$MIN_PHASE" -gt "$phase_idx" ]; then
         if [ -f "$json_path" ]; then
             echo "[SKIP] Using cached results for Phase $phase_idx: $json_path"
             return 1 # Skip
         else
-            echo "[ERROR] Cache missing for required Phase $phase_idx: $json_path"
-            exit 1
+            echo "[INFO] Cache missing for required Phase $phase_idx: $json_path. Running to recover."
+            return 0 # Run to recover
         fi
     fi
     return 0 # Run
@@ -113,7 +134,7 @@ echo -e "\n>>> 1. Translation Phase"
 if run_check 1 "${P1_JSON}"; then
     python3 ./rys/phase1_translate.py --prompt "$PROMPT" --out-json "${P1_JSON}" ${common_args}
 else
-    python3 -c "import json; print(json.load(open('${P1_JSON}'))['translated_text'])"
+    python3 -c "import json; d=json.load(open('${P1_JSON}')); print(d.get('content', d.get('translated_text', '')))"
 fi
 check_stop 1
 
@@ -121,35 +142,27 @@ echo -e "\n>>> 2. Dispatch Phase"
 if run_check 2 "${P2_JSON}"; then
     python3 ./rys/phase2_dispatch.py --in-json "${P1_JSON}" --out-json "${P2_JSON}" ${common_args}
 else
-    python3 -c "import json; print(json.load(open('${P2_JSON}'))['dispatch_out'])"
+    python3 -c "import json; d=json.load(open('${P2_JSON}')); print(d.get('content', d.get('dispatch_out', '')))"
 fi
 check_stop 2
 
-echo -e "\n>>> 3. Request Visualization Phase"
+echo -e "\n>>> 3. Strategic Planning Phase"
 if run_check 3 "${P3_JSON}"; then
-    python3 ./rys/phase3_visualize.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" ${common_args}
+    python3 ./rys/phase3_plan.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
-    python3 -c "import json; print(json.load(open('${P3_JSON}'))['titles_out'])"
+    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'\n{t[\"title\"]}\n{t[\"refined_out\"]}') for t in d.get('planned_topics', [])]"
 fi
 check_stop 3
 
-echo -e "\n>>> 4. Strategic Planning Phase"
+echo -e "\n>>> 4. Step-by-Step Coding Phase"
 if run_check 4 "${P4_JSON}"; then
-    python3 ./rys/phase4_plan.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
+    python3 ./rys/phase4_code.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
-    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'\n{t[\"title\"]}\n{t[\"refined_out\"]}') for t in d['planned_topics']]"
+    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'\n{s[\"title\"]}\nFile: {s[\"path\"]}') for s in d.get('scripts', [])]"
 fi
 check_stop 4
 
-echo -e "\n>>> 5. Step-by-Step Coding Phase"
-if run_check 5 "${P5_JSON}"; then
-    python3 ./rys/phase5_code.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${rys_uuid}" ${common_args}
-else
-    python3 -c "import json; d=json.load(open('${P5_JSON}')); [print(f'\n{s[\"title\"]}\nFile: {s[\"path\"]}') for s in d['scripts']]"
-fi
-check_stop 5
-
-echo -e "\n>>> 6. Execution Loop (Interactive)"
-python3 ./rys/phase6_execute.py --in-json "${P5_JSON}" ${AUTO_MODE}
+echo -e "\n>>> 5. Execution Loop (Interactive)"
+python3 ./rys/phase5_execute.py --in-json "${P4_JSON}" ${AUTO_MODE}
 
 echo -e "\nAll Done. Results stored in ./tmp/"

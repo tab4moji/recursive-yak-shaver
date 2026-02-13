@@ -14,7 +14,7 @@
   {
     "id": "python_math",
     "type": "primitive",
-    "description": "Advanced mathematical calculations (primes, algebra) using Python + SymPy.",
+    "description": "Advanced mathematical calculations (prime numbers, algebra) using Python + SymPy.",
     "tools": ["python3", "sympy"]
   },
   {

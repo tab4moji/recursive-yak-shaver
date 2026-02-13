@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Phase 5: Execution (v1.0)
+Phase 5: Execution Loop (v2.0)
 Iterates through generated scripts and asks for execution.
+Renamed from Phase 6 to Phase 5.
 """
 
 import sys
@@ -18,11 +19,9 @@ def main():
     parser.add_argument("--in-json", required=True)
     parser.add_argument("--auto", action="store_true", help="Execute without prompting")
     args = parser.parse_args()
-    if args.auto:
-        print(f"{colors.sys_color}[DEBUG] Auto-mode is ENABLED{colors.reset_code}")
 
     if not os.path.exists(args.in_json):
-        print(f">>> Skipping Phase 6: Input file {args.in_json} not found.")
+        print(f">>> Skipping Phase 5: Input file {args.in_json} not found.")
         return
 
     with open(args.in_json, "r", encoding="utf-8") as f:

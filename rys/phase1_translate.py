@@ -36,7 +36,7 @@ def main():
     translated_text = call_role(SCRIPT_DIR, "translater", args.prompt, config, colors)
     
     with open(args.out_json, "w", encoding="utf-8") as f:
-        json.dump({"translated_text": translated_text}, f, ensure_ascii=False, indent=2)
+        json.dump({"content": translated_text, "translated_text": translated_text}, f, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
     main()

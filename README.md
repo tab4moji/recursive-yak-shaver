@@ -1,62 +1,47 @@
 # Recursive Yak Shaver (RYS)
 
-**Recursive Yak Shaver (RYS)** は、曖昧な指示を具体的かつ安全なシェル操作に変換し、自動実行するマルチエージェント・パイプラインだ。Gemma-3N をコアに据え、翻訳・計画・実装・検証を自動で行う。
+**Recursive Yak Shaver (RYS)** is an autonomous multi-agent pipeline designed to transform ambiguous natural language instructions into safe, atomic, and executable shell operations. Powered by Gemma-3N, it handles translation, planning, implementation, and verification through a rigorous 6-phase process.
 
-## 🚀 主要な特徴
+## 🚀 Key Architectural Pillars
 
-- **6フェーズ・オートメーション**: ユーザーの自然言語入力を、翻訳、ディスパッチ、視覚化、計画、コーディング、実行の6段階で処理する。
-- **Auto-Fix (Smart-Fix) エンジン**: LLMが生成しがちな `cut`, `head`, `tail` などのストリーム処理ミスを自動検知し、実行前に強制修正する。
-- **ロールベース設計**: 翻訳者(Translater)、設計者(Engineer)、監査役(Auditor)など、専門特化したロールが協調して動作する。
-- **多言語対応インターフェース**: `gemma` ロールにより、日本語・英語を問わず適切な言語で対話が可能。
+- **Mono-Role Responsibility**: Each phase is governed by a single, specialized role (Engineer for planning, Coder for implementation) to ensure focused reasoning and prevent logic leakage.
+- **Golden Pattern Adherence**: Standardized file operations follow a strict "Golden Pattern": `find` -> `du` -> `sort` -> `head` -> `cut` -> `cat`.
+- **Atomic Command Fragments**: The system enforces "One Command per Step" logic. Snippets are treated as pure pipe segments, stripped of redundant prefixes or nested pipe chains.
+- **Affirmative Control**: All role directives and cheatsheets use purely affirmative language ("Do this") to maximize LLM instruction-following and stability.
 
-## 🛠 ディレクトリ構造
+## 🛠 The 6-Phase Pipeline
 
-```text
-.
-├── rys/                  # コア・ロジック
-│   ├── main.bash         # メイン・エントリーポイント
-│   ├── invoke_role.py    # ロール呼び出しハブ（デフォルト: gemma）
-│   ├── phase1-6_*.py     # 各フェーズの実行スクリプト
-│   └── ...
-├── roles/                # ロール定義 (Markdown)
-│   ├── role_gemma.md     # 汎用インターフェース（言語自動選択）
-│   ├── role_coder.md     # コード生成の絶対ルール
-│   └── role_common_constraints.md # 共通論理制約
-├── config/               # 設定・スキル定義
-│   ├── skills/           # shell_exec 等のチートシート
-│   └── risks.json        # リスク回避知識ベース
-└── tmp/                  # 実行時の中間成果物
-```
+### Phase 1: Translation (Translater)
+Normalizes ambiguous, multi-lingual user input into clear, standardized English tasks.
 
-## 📖 使い方
+### Phase 2: Dispatch (Dispatcher)
+Categorizes tasks into specific domains and assigns the appropriate **Skill** (e.g., `shell_exec`, `python_math`). This phase acts as the primary router for domain-specific knowledge.
 
-### 1. メインパイプラインの実行
-自然言語で指示を出すだけで、必要なスクリプトが生成・実行される。
-```bash
-RYS_LLM_HOST=http://<IP> ./rys/main.bash "このディレクトリで一番大きいファイルを教えて"
-```
-`--auto` オプションを付けると、確認プロンプトをスキップして実行する。
+### Phase 3: Visualization (Titler)
+Organizes tasks into logical request groups with descriptive titles for transparency.
 
-#### キャッシュ制御と部分実行 (`--from`)
-- `--from=N`: 指定したフェーズ $N$ から再開し、それ以降のキャッシュをすべて破棄して最後まで実行する。
-- `--from=N,M`: 指定したフェーズのみキャッシュを破棄して実行し、リスト内の最大フェーズ完了後に自動停止する。
-  - 例: `--from=4,4` (フェーズ4のみをやり直して停止)
-  - 例: `--from=4,5` (フェーズ4と5をやり直して停止)
+### Phase 4: Strategic Planning (Engineer)
+Utilizes the assigned **Skill Context** to design a roadmap. The Engineer breaks down the goal into atomic milestones, ensuring each milestone represents exactly one logical transformation (e.g., "Milestone 3: Sort data").
 
-### 2. ロール単体での呼び出し
-特定の役割としてLLMと対話する。デフォルトは `gemma` ロールで、挨拶や質問に簡潔に答える。
-```bash
-# 汎用挨拶（言語自動一致）
-./rys/invoke_role.py --host=http://<IP> --prompt="hello"
+### Phase 5: Step-by-Step Coding (Coder)
+Implements the roadmap milestones. For each step:
+1. **Context Injection**: The Coder receives the specific milestone task and the corresponding **Skill Cheatsheet** (GoodParts).
+2. **Affirmative Implementation**: The Coder generates a single, atomic command fragment based on the cheatsheet patterns.
+3. **Pipe Stripper**: The system automatically extracts the last segment of the generated code to ensure no redundancy and strict adherence to the pipeline flow.
 
-# 特定の役割（エンジニア）を指名
-./rys/invoke_role.py --role=engineer --prompt="Write a script to list files."
-```
+### Phase 6: Execution Loop
+Aggregates snippets into a native shell or Python orchestrator, provides a final review, and executes the sequence.
 
-## 🛡 安全性と信頼性
+## 📖 Skills & Cheatsheets
 
-- **Auditor Phase**: 生成されたプランは実行前に監査ロールによってリスクチェックを受ける。
-- **Safe Stream Processing**: `$1` の誤用やファイルオープンミスをプログラムレベルでガードし、パイプラインの破綻を防ぐ。
+Skills are not just tool labels; they are the **Knowledge Anchors** of the system.
+- **Planning**: In Phase 4, skills provide the Engineer with the "vocabulary" of available tools.
+- **Implementation**: In Phase 5, skills provide the Coder with "best-practice patterns," forcing the model to mirror the exact syntax defined in `config/skills/*.json`.
+
+## 🛡 Security & Reliability
+
+- **Auditor Role**: Plans are checked against a Risk Knowledge Base before execution.
+- **Granular Caching**: Every step is cached. Use `RYS_FORCE_CACHE=1` to debug specific milestones and verify granular logic without re-running stable phases.
 
 ## ⚖️ License
 MIT License

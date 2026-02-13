@@ -37,13 +37,17 @@ def main():
     with open(args.in_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    # Use 'content' if available, fallback to 'translated_text'
+    input_text = data.get("content", data.get("translated_text", ""))
+
     base_url = build_base_url(args.host, args.port)
     verify_connection(base_url)
     config = ChatConfig(api_url=f"{base_url.rstrip('/')}/v1/chat/completions", model=args.model, quiet_mode=True, stream_output=True, insecure=False)
     colors = TerminalColors(enable_color=True)
 
-    dispatch_out = call_role(SCRIPT_DIR, "dispatcher", data["translated_text"], config, colors, include_skills=True)
+    dispatch_out = call_role(SCRIPT_DIR, "dispatcher", input_text, config, colors, include_skills=True)
     
+    data["content"] = dispatch_out
     data["dispatch_out"] = dispatch_out
     with open(args.out_json, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

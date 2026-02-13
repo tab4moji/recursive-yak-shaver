@@ -63,14 +63,22 @@ def load_skill_detail(config_dir: str, skill_id: str) -> str:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            lines = [f"### GoodParts Cheat Sheet: {data.get('name', skill_id)}"]
+            lines = [f"### SKILLS CHEAT SHEET ({skill_id})"]
+            lines.append(f"The \"{skill_id}\" skill supports the following virtual operations:")
 
             if "patterns" in data:
-                lines.append("#### Recommended Syntax (Best Practice)")
                 for p in data["patterns"]:
-                    lines.append(f"- **Task**: {p['task']}")
-                    lines.append(f"  - **Recommended**: `{p['recommended']}`")
-                    lines.append(f"  - Input: {p.get('input_type', 'Any')} -> Output: {p.get('output_type', 'Any')}")
+                    op_name = p['task'].lower().replace(" ", "_")
+                    lines.append(f"\n- Operation: \"{op_name}\"")
+                    lines.append(f"  Description: {p['task']}.")
+                    
+                    in_type = p.get('input_type', 'Any')
+                    if "path" in in_type.lower() or "directory" in in_type.lower():
+                        lines.append(f"  Input Type: \"{in_type}\" (default to \"./\" if not specified)")
+                    else:
+                        lines.append(f"  Input Type: \"{in_type}\"")
+                        
+                    lines.append(f"  Output Type: \"{p.get('output_type', 'Any')}\"")
 
             return "\n".join(lines)
         except Exception:
@@ -107,6 +115,11 @@ def construct_system_prompt(
     if include_skills:
         skills_data = load_skills_data(config_dir, skill_filter)
         
+        # Add Skill Definitions (Formal IDs and descriptions)
+        if isinstance(skills_data, list) and skills_data:
+            skills_json = json.dumps(skills_data, indent=2, ensure_ascii=False)
+            parts.append(f"\n# Available Skills definition\n```json\n{skills_json}\n```")
+
         # Add Cheatsheets (The "Context" for ICL)
         cheatsheets = []
         if isinstance(skills_data, list):
