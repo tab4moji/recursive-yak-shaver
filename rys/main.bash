@@ -101,8 +101,8 @@ run_check() {
 
     # In ONLY_CACHE_USE mode, always try to use cache first if it exists
     if [ -n "$ONLY_CACHE_USE" ] && [ -f "$json_path" ]; then
-        echo "[SKIP] Using cached results for Phase $phase_idx: $json_path"
-        return 1 # Skip (Use cache)
+        # return 1 means skip (Use cache)
+        return 1
     fi
 
     if [ "$MIN_PHASE" -eq "$phase_idx" ]; then
@@ -110,11 +110,12 @@ run_check() {
     fi
     if [ "$MIN_PHASE" -gt "$phase_idx" ]; then
         if [ -f "$json_path" ]; then
-            echo "[SKIP] Using cached results for Phase $phase_idx: $json_path"
             return 1 # Skip
         else
-            echo "[INFO] Cache missing for required Phase $phase_idx: $json_path. Running to recover."
-            return 0 # Run to recover
+            # Error out if cache is missing and we're not running to recover
+            # Note: The 'recover' logic was previously return 0 here.
+            # If we want to keep recover logic, we should return 0 but maybe mark it.
+            return 0
         fi
     fi
     return 0 # Run
@@ -130,34 +131,38 @@ check_stop() {
 
 # --- Execution ---
 
-echo -e "\n>>> 1. Translation Phase"
 if run_check 1 "${P1_JSON}"; then
+    echo -e "\n>>> 1. Translation Phase"
     python3 ./rys/phase1_translate.py --prompt "$PROMPT" --out-json "${P1_JSON}" ${common_args}
 else
+    echo -e "\n>>> 1. Translation Phase (Cached)"
     python3 -c "import json; d=json.load(open('${P1_JSON}')); print(d.get('content', d.get('translated_text', '')))"
 fi
 check_stop 1
 
-echo -e "\n>>> 2. Dispatch Phase"
 if run_check 2 "${P2_JSON}"; then
+    echo -e "\n>>> 2. Dispatch Phase"
     python3 ./rys/phase2_dispatch.py --in-json "${P1_JSON}" --out-json "${P2_JSON}" ${common_args}
 else
+    echo -e "\n>>> 2. Dispatch Phase (Cached)"
     python3 -c "import json; d=json.load(open('${P2_JSON}')); print(d.get('content', d.get('dispatch_out', '')))"
 fi
 check_stop 2
 
-echo -e "\n>>> 3. Strategic Planning Phase"
 if run_check 3 "${P3_JSON}"; then
+    echo -e "\n>>> 3. Strategic Planning Phase"
     python3 ./rys/phase3_plan.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
+    echo -e "\n>>> 3. Strategic Planning Phase (Cached)"
     python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'\n{t[\"title\"]}\n{t.get(\"content\", \"\")}\nTopic: {t[\"topic\"]} [Strategic Roadmap] {t[\"refined_out\"].replace(\"\\n\", \" \")}') for t in d.get('planned_topics', [])]"
 fi
 check_stop 3
 
-echo -e "\n>>> 4. Step-by-Step Coding Phase"
 if run_check 4 "${P4_JSON}"; then
+    echo -e "\n>>> 4. Step-by-Step Coding Phase"
     python3 ./rys/phase4_code.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
+    echo -e "\n>>> 4. Step-by-Step Coding Phase (Cached)"
     python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'\n{s[\"title\"]}\nFile: {s[\"path\"]}') for s in d.get('scripts', [])]"
 fi
 check_stop 4
