@@ -69,18 +69,12 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
         completed_steps = "\n".join([f"- Step {j+1}: {steps_metadata[j]['description']}" for j in range(i)])
         
         # Input/Output Context Injection
-        io_hint = "Initial Input (Standard Input)" if i == 0 else f"Output from Step {i}"
+        io_hint = "Standard Input" if i == 0 else f"Output from Step {i}"
 
         step_prompt = (
-            f"### GOAL\n{topic}\n\n"
-            f"### CURRENT TASK (Step {i+1})\n{step_desc}\n\n"
-            f"### CONTEXT\n"
-            f"- Input Source: {io_hint}\n"
-            f"- Roadmap: {refined_out}\n"
-            f"- Done: {completed_steps if completed_steps else 'None'}\n\n"
-            "### INSTRUCTIONS\n"
-            "- Provide ONLY the command fragment for this step.\n"
-            "- Include mandatory metadata comments at the top.\n"
+            f"### Task\n{step_desc}\n\n"
+            f"### Context\n"
+            f"- Input: {io_hint}\n"
         )
 
         snippet_out = call_role(SCRIPT_DIR, "coder", step_prompt, config, colors, 
@@ -100,6 +94,13 @@ def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
             clean_lines.append(line)
         
         clean_snippet = "\n".join(clean_lines).strip()
+
+        # --- MANDATORY PIPE STRIPPER (Keep Last Segment) ---
+        if "|" in clean_snippet:
+            last_cmd = clean_snippet.split("|")[-1].strip()
+            print(f"      [STRIP] Multiple segments detected. Keeping last: '{last_cmd}'")
+            clean_snippet = last_cmd
+        # ---------------------------------------------------
 
         # Metadata Parsing
         proc_match = re.search(r"# Processing:\s*(Per-Item|Whole)", raw_snippet, re.IGNORECASE)

@@ -6,12 +6,14 @@ Create a high-level conceptual blueprint. Your output will be used as the **excl
 
 ### Instructions
 1. **Full Topic Coverage**: Ensure every aspect of the original TOPIC is addressed.
-2. **Standard Pipeline Pattern**: Prioritize the "Golden Pattern" for file size operations:
-   - `find . -type f` -> `du -b "$1"` -> `sort` -> `head -n 1` -> `cut -f2-` -> `cat "$1"`.
-3. **Milestone Design**: List the solution as a sequence of logical milestones. Use "Milestone N: [Description]" format.
-4. **Sorting Logic**: Specify the order clearly. "Smallest" requires ascending order (`sort -n`). "Largest" requires descending order (`sort -rn`).
-5. **Data Cleaning**: Include a milestone to isolate the target data (e.g., "strip size metadata using cut") if previous steps added overhead.
-6. **Simplicity**: Focus on "what" happens to the data. Keep descriptions short and affirmative.
+2. **Atomic Pipeline Pattern**: Follow the "Golden Pattern" by creating **one separate milestone for each command**:
+   - Milestone 1: Locate files (`find`)
+   - Milestone 2: Calculate size (`du -b`)
+   - Milestone 3: Sort data (`sort -n`)
+   - Milestone 4: Select top record (`head -n 1`)
+   - Milestone 5: Isolate path (`cut -f2-`)
+   - Milestone 6: Perform action (`cat`, `rm`, etc.)
+3. **Simplicity**: Use short, affirmative descriptions for each milestone.
 
 ### Output Format
 [Strategic Approach]

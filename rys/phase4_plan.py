@@ -48,12 +48,7 @@ def plan_job(job, data, config, colors, tmp_dir, prompt_hash):
     print(f"\nPlanning {req_title}")
     print(f"Topic: {topic}")
     
-    goal_prompt = (
-        f"### TOPIC\n{topic}\n\n"
-        f"### INSTRUCTIONS\n"
-        f"- Break down the task into logical milestones.\n"
-        f"- Focus on data flow and transformations.\n"
-    )
+    goal_prompt = f"### Topic\n{topic}"
 
     e_cache = f"{tmp_dir}/.rys.{topic_hash}.p4_engineer.json"
     refined_out = cached_call(

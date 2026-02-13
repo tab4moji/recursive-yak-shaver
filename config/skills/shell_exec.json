@@ -1,39 +1,38 @@
 {
   "id": "shell_exec",
   "name": "Shell Execution (Bash)",
-  "description": "Essential file and text processing tools.",
+  "description": "Standard pipe-ready tools for file and text processing.",
   "patterns": [
     {
-      "task": "Recursively find files",
-      "recommended": "find . -type f"
+      "task": "Enumerate files",
+      "recommended": "find . -type f",
+      "output_type": "List"
     },
     {
-      "task": "Filter text with pattern",
-      "recommended": "grep \"pattern\""
+      "task": "Calculate size",
+      "recommended": "du -b \"$1\"",
+      "input_type": "Path",
+      "output_type": "List"
     },
     {
-      "task": "Get file size in bytes",
-      "recommended": "du -b \"$1\""
+      "task": "Sort numerically (Smallest top)",
+      "recommended": "sort -n",
+      "output_type": "List"
     },
     {
-      "task": "Read file content",
-      "recommended": "cat \"$1\""
+      "task": "Select first item",
+      "recommended": "head -n 1",
+      "output_type": "Single"
     },
     {
-      "task": "Sort numerically (Smallest first)",
-      "recommended": "sort -n"
+      "task": "Extract path only",
+      "recommended": "cut -f2-",
+      "output_type": "Single"
     },
     {
-      "task": "Sort numerically (Largest first)",
-      "recommended": "sort -rn"
-    },
-    {
-      "task": "Isolate path field",
-      "recommended": "cut -f2-"
-    },
-    {
-      "task": "Select the first line",
-      "recommended": "head -n 1"
+      "task": "Display content",
+      "recommended": "cat \"$1\"",
+      "input_type": "Path"
     }
   ]
 }

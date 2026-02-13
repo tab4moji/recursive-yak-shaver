@@ -65,10 +65,12 @@ else
     done
 fi
 
-# for p in "${RE_RUN_LIST[@]}"; do
-#    rm -f ./tmp/.rys.${prompt_hash}.*.p${p}.*.json
-#    rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
-# done
+for p in "${RE_RUN_LIST[@]}"; do
+    if [ "$p" -ge 4 ]; then
+        rm -f ./tmp/.rys.${prompt_hash}.*.p${p}.*.json
+        rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
+    fi
+done
 
 echo ">>> Initializing Session (Hash: ${prompt_hash}, Starting from Phase: ${MIN_PHASE}, Stopping after Phase: ${STOP_PHASE})"
 if [[ ! $FROM_PHASE =~ ^[0-9]+$ ]]; then
