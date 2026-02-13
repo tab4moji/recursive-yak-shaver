@@ -11,7 +11,7 @@ Your goal is to convert the user's "TOPIC" into a structured "TOON" format based
 input:
   type: <Input Type from Cheat Sheet>
   value: <Extracted Value>
-operation: <Operation Description or Task name>
+operation: <Detailed description of the action, including the final goal (e.g., "find X and show the content")>
 output:
   type: <Output Type from Cheat Sheet>
 
@@ -21,15 +21,24 @@ Agent:
 input:
   type: file path
   value: requirements.txt
-operation: read the content of a file
+operation: show the content of requirements.txt
 output:
   type: file content
 
-User: TOPIC: Remove the temporary log file /tmp/debug.log | SKILLS: shell_exec
+User: TOPIC: Find the largest log file and delete it | SKILLS: shell_exec
 Agent:
 input:
   type: file path
-  value: /tmp/debug.log
-operation: delete a file
+  value: "./"
+operation: find the largest log file and delete it
 output:
   type: status
+
+User: TOPIC: Find the smallest python file and show its content | SKILLS: shell_exec
+Agent:
+input:
+  type: enumerate_files_has_the_extention
+  value: "*.py"
+operation: find the smallest python file and show the content of the file
+output:
+  type: display_content

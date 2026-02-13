@@ -69,6 +69,13 @@ def plan_job(job, data, config, colors, tmp_dir, prompt_hash):
     if toon_data and isinstance(toon_data, dict):
         op = toon_data.get("operation", "Execute task")
         val = toon_data.get("input", {}).get("value", "")
+        out_type = toon_data.get("output", {}).get("type", "")
+
+        # Refine operation if it lacks the display/show intent but output type suggests it
+        display_keywords = ["display", "show", "print", "read", "content"]
+        if out_type in ["display_content", "file_content"] and not any(k in op.lower() for k in display_keywords):
+            op = f"{op} and show the content of the file"
+
         # Convert back to a Milestone format that Phase 4 understands
         refined_out = f"Milestone 1: {op}"
         if val:

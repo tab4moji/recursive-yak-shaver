@@ -19,15 +19,21 @@
       "output_type": "List"
     },
     {
-      "task": "Calculate size",
-      "recommended": "du -b \"$1\"",
+      "task": "Sort numerically (Smallest top)",
+      "recommended": "sort -n",
+      "output_type": "List"
+    },
+    {
+      "task": "Display content",
+      "recommended": "cat \"$1\"",
       "input_type": "Path",
       "output_type": "List"
     },
     {
-      "task": "Sort numerically (Smallest top)",
-      "recommended": "sort -n",
-      "output_type": "List"
+      "task": "Calculate size",
+      "recommended": "du -b \"$1\"",
+      "input_type": "Path",
+      "output_type": "Single"
     },
     {
       "task": "Select first item",
@@ -38,11 +44,6 @@
       "task": "Extract path only",
       "recommended": "cut -f2-",
       "output_type": "Single"
-    },
-    {
-      "task": "Display content",
-      "recommended": "cat \"$1\"",
-      "input_type": "Path"
     }
   ]
 }
