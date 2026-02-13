@@ -9,6 +9,16 @@
       "output_type": "List"
     },
     {
+      "task": "Enumerate files has the extention",
+      "recommended": "find . -type f -name *.py",
+      "output_type": "List"
+    },
+    {
+      "task": "Enumerate directories",
+      "recommended": "find . -type d",
+      "output_type": "List"
+    },
+    {
       "task": "Calculate size",
       "recommended": "du -b \"$1\"",
       "input_type": "Path",
