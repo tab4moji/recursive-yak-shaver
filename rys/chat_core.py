@@ -4,32 +4,46 @@
 OpenAI-compatible API Connection Command. (v0.3)
 
 History:
-  1. 2025-12-29 Initial version
-  2. 2026-02-07 Refactored and split into modules for Pylint compliance
-  3. 2026-02-07 Further split to reduce file size < 6KiB
+1. 2025-12-29 Initial version
+2. 2026-02-07 Refactored and split into modules
+3. 2026-02-15 Added /image command for multimodal support
 """
 # pylint: disable=useless-return,broad-exception-caught
 
 import sys
 import argparse
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from chat_types import ChatConfig
 from chat_ui import TerminalColors, handle_interactive_output, handle_quiet_output
-from chat_api import verify_connection, load_session_data, stream_chat_completion, build_base_url
-
+from chat_api import verify_connection, load_session_data, stream_chat_completion, build_base_url, encode_image
 
 def process_turn(
     config: ChatConfig,
-    messages: List[Dict[str, str]],
+    messages: List[Dict[str, Any]],
     colors: TerminalColors,
-    prompt_text: Optional[str] = None
+    prompt_text: Optional[str] = None,
+    pending_images: Optional[List[str]] = None
 ) -> None:
     """Orchestrates a single turn of conversation."""
     if prompt_text:
-        messages.append({"role": "user", "content": prompt_text})
-        if not config.quiet_mode:
-            print(f"{colors.prompt_prefix}You > {colors.prompt_suffix}{prompt_text}")
+        if pending_images:
+            # Construct multimodal message (OpenAI Vision format)
+            content_list = [{"type": "text", "text": prompt_text}]
+            for img_url in pending_images:
+                content_list.append({
+                    "type": "image_url",
+                    "image_url": {"url": img_url}
+                })
+            messages.append({"role": "user", "content": content_list})
+        else:
+            messages.append({"role": "user", "content": prompt_text})
+
+    if not config.quiet_mode:
+        display_text = prompt_text if prompt_text else ""
+        if pending_images:
+            display_text += f" [Attached {len(pending_images)} images]"
+        print(f"{colors.prompt_prefix}You > {colors.prompt_suffix}{display_text}")
 
     status_msg = "... thinking ..."
     if not config.quiet_mode:
@@ -57,36 +71,56 @@ def process_turn(
 
     return None
 
-
 def _run_interactive_loop(
     config: ChatConfig,
-    messages: List[Dict[str, str]],
+    messages: List[Dict[str, Any]],
     colors: TerminalColors
 ) -> None:
     """Runs the main interactive REPL loop."""
-    print(colors.colorize("Type 'exit' to stop.\n", colors.sys_color))
+    print(colors.colorize("Type 'exit' to stop. Type '/image <path>' to attach image.\n", colors.sys_color))
+    
+    pending_images = []
 
     while True:
         try:
             prompt_str = f"{colors.prompt_prefix}You > {colors.prompt_suffix}"
+            if pending_images:
+                prompt_str = f"{colors.prompt_prefix}You (Img:{len(pending_images)}) > {colors.prompt_suffix}"
+            
             user_input = input(prompt_str)
 
             if not user_input:
                 continue
+
             if user_input.lower() in ["exit", "quit"]:
                 break
+            
+            # Handle /image command
+            if user_input.lower().startswith("/image "):
+                path = user_input[7:].strip()
+                # Remove quotes if user added them
+                if (path.startswith('"') and path.endswith('"')) or (path.startswith("'") and path.endswith("'")):
+                    path = path[1:-1]
+                
+                img_data = encode_image(path)
+                if img_data:
+                    pending_images.append(img_data)
+                    print(colors.colorize(f" [Image attached: {path}]", colors.sys_color))
+                else:
+                    print(colors.wrap_error(f" [Error] Could not load image: {path}"))
+                continue
 
-            process_turn(config, messages, colors, prompt_text=user_input)
+            process_turn(config, messages, colors, prompt_text=user_input, pending_images=pending_images)
+            pending_images = [] # Clear images after sending
 
         except (KeyboardInterrupt, EOFError):
             print("\nBye.")
             break
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except Exception as exc: # pylint: disable=broad-exception-caught
             print(f"\n{colors.wrap_error(f'[CRITICAL] {exc}')}")
             break
 
     return None
-
 
 def run_chat_session(args: argparse.Namespace) -> None:
     """Initializes and runs the chat loop or one-shot command."""
@@ -106,14 +140,16 @@ def run_chat_session(args: argparse.Namespace) -> None:
 
     messages = [{"role": "system", "content": args.system}]
     loaded_session = load_session_data(args.session_file, args.session_json)
+
     if loaded_session:
         if loaded_session[0].get("role") == "system":
             messages = loaded_session
         else:
             messages.extend(loaded_session)
-        if not args.quit:
-            msg = f"[Session Loaded] {len(loaded_session)} messages."
-            print(colors.colorize(msg, colors.sys_color))
+
+    if not args.quit:
+        msg = f"[Session Loaded] {len(loaded_session)} messages."
+        print(colors.colorize(msg, colors.sys_color))
 
     initial_prompt = args.prompt
     if initial_prompt is None and not sys.stdin.isatty():
@@ -125,17 +161,18 @@ def run_chat_session(args: argparse.Namespace) -> None:
     else:
         msg = f"--- Streaming Mode: {config.api_url} ({config.model}) ---"
         print(f"{colors.sys_color}{msg}{colors.reset_code}")
+
         if initial_prompt:
             process_turn(config, messages, colors, prompt_text=initial_prompt)
+
         _run_interactive_loop(config, messages, colors)
 
     return None
 
-
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Chat Tester v7.3 - OpenAI Compatible Client"
+        description="Chat Tester v7.4 - OpenAI Compatible Client with Vision"
     )
     parser.add_argument("--host", default="localhost", help="Target Host IP")
     parser.add_argument("--port", "-p", help="Target Port")
@@ -158,7 +195,6 @@ def main() -> None:
     args = parser.parse_args()
     run_chat_session(args)
     return None
-
 
 if __name__ == "__main__":
     main()

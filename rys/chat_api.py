@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-API Communication and Data Loading (v0.1)
+API Communication and Data Loading (v0.2)
 
 History:
-  1. 2026-02-07 Initial version (split from chat_core.py)
+1. 2026-02-07 Initial version (split from chat_core.py)
+2. 2026-02-15 Added image encoding and list content support for Vision API
 """
 # pylint: disable=useless-return,broad-exception-caught
 
@@ -12,6 +13,8 @@ import sys
 import json
 import os
 import ssl
+import base64
+import mimetypes
 import urllib.request
 import urllib.error
 from typing import Iterator, Dict, Any, List, Optional
@@ -25,12 +28,10 @@ def get_ssl_context(insecure: bool) -> Optional[ssl.SSLContext]:
         ctx = ssl._create_unverified_context()
     return ctx
 
-
 def build_base_url(host: str, port: Optional[str]) -> str:
     """Constructs the base URL from host and port."""
     host_input = host.strip()
     port_arg = str(port).strip() if port else ""
-
     if "://" in host_input:
         protocol, host_part = host_input.split("://", 1)
         protocol = protocol.lower()
@@ -40,22 +41,19 @@ def build_base_url(host: str, port: Optional[str]) -> str:
         host_part = host_input
 
     default_port = "11434" if protocol == "http" else "443"
-
     if ":" in host_part:
         final_host_part = host_part
     else:
         final_port = port_arg if port_arg else default_port
         final_host_part = f"{host_part}:{final_port}"
-
+    
     return f"{protocol}://{final_host_part}"
-
 
 def verify_connection(base_url: str, timeout: int = 2, insecure: bool = False) -> None:
     """Checks if the API endpoint is reachable."""
     target_url = f"{base_url}/v1/models"
     headers = {"Authorization": "Bearer not-needed"}
     ctx = get_ssl_context(insecure)
-
     try:
         req = urllib.request.Request(target_url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout, context=ctx):
@@ -64,33 +62,47 @@ def verify_connection(base_url: str, timeout: int = 2, insecure: bool = False) -
         sys.stderr.write(f"\033[31m[Fatal Error] Could not connect to {target_url}\n")
         sys.stderr.write(f"Reason: {exc}\033[0m\n")
         sys.exit(1)
-
     return None
 
+def encode_image(file_path: str) -> Optional[str]:
+    """Encodes an image file to a base64 string with data URI scheme."""
+    if not os.path.exists(file_path):
+        return None
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if not mime_type:
+        mime_type = "application/octet-stream"
+    try:
+        with open(file_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            return f"data:{mime_type};base64,{encoded_string}"
+    except Exception:
+        return None
 
-def normalize_message(msg: Dict[str, Any]) -> Dict[str, str]:
+def normalize_message(msg: Dict[str, Any]) -> Dict[str, Any]:
     """Ensures message has standard 'role' and 'content' keys."""
-    result = {"role": "user", "content": str(msg)}
-
+    # Allow content to be list (for multimodal) or string
+    result = {"role": "user", "content": msg.get("content", "")}
     if "role" in msg and "content" in msg:
         result = msg
     else:
         for role_key in ["user", "system", "assistant", "agent"]:
             if role_key in msg:
                 norm_role = "assistant" if role_key == "agent" else role_key
-                result = {"role": norm_role, "content": str(msg[role_key])}
+                result = {"role": norm_role, "content": msg[role_key]}
                 break
+    
+    # Ensure content is string only if it's not a list (to keep objects for vision)
+    if not isinstance(result["content"], list) and not isinstance(result["content"], str):
+         result["content"] = str(result["content"])
 
     return result
-
 
 def load_session_data(
     file_path: Optional[str],
     json_str: Optional[str]
-) -> List[Dict[str, str]]:
+) -> List[Dict[str, Any]]:
     """Loads session history from a file or JSON string."""
     raw_data = []
-
     try:
         if file_path and os.path.exists(file_path):
             with open(file_path, 'r', encoding='utf-8') as f_in:
@@ -108,7 +120,6 @@ def load_session_data(
 
     return [normalize_message(m) for m in raw_data]
 
-
 def _parse_stream_line(line_str: str) -> Optional[str]:
     """Parses a single line from the SSE stream."""
     content = None
@@ -123,11 +134,10 @@ def _parse_stream_line(line_str: str) -> Optional[str]:
                 pass
     return content
 
-
 def stream_chat_completion(
     url: str,
     model: str,
-    messages: List[Dict[str, str]],
+    messages: List[Dict[str, Any]],
     colors: TerminalColors,
     insecure: bool = False
 ) -> Iterator[str]:
@@ -136,7 +146,6 @@ def stream_chat_completion(
     payload = {"model": model, "messages": messages, "stream": True}
     ctx = get_ssl_context(insecure)
 
-    full_text = ""
     try:
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers)
@@ -145,14 +154,13 @@ def stream_chat_completion(
                 content = _parse_stream_line(line.decode("utf-8").strip())
                 if content:
                     # Clean up special tokens
-                    for token in ["<end_of_turn>", "<eos>", "<|file_separator|>", "<|end_of_text|>", "<|im_end|>"]:
+                    for token in ["<end_of_turn>", "<start_of_turn>", "<|file_separator|>", "<|end_of_text|>", "<|im_end|>"]:
                         content = content.replace(token, "")
                     yield content
                 elif line.decode("utf-8").strip() == "data: [DONE]":
                     break
     except urllib.error.URLError as exc:
         yield f"\n{colors.wrap_error(f'[Connection Error] {exc}')}"
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc: # pylint: disable=broad-exception-caught
         yield f"\n{colors.wrap_error(f'[Error] {exc}')}"
-
     return None

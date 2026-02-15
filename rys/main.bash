@@ -11,7 +11,7 @@ MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 FROM_PHASE=1
 PROMPT=""
 AUTO_MODE=""
-STOP_PHASE=2
+STOP_PHASE=3
 
 # Simple Argument Parsing
 for arg in "$@"; do
@@ -47,8 +47,14 @@ common_args="--host ${HOST} --port ${PORT} --model ${MODEL}"
 IFS=',' read -ra TARGET_PHASES <<< "$FROM_PHASE"
 RE_RUN_LIST=()
 MIN_PHASE=5
-STOP_PHASE=2
 ONLY_CACHE_USE=""
+
+# Default stop phase logic
+if [ "$FROM_PHASE" = "1" ]; then
+    STOP_PHASE=3
+else
+    STOP_PHASE=5
+fi
 
 if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
     # Traditional behavior: from N to 5
@@ -56,15 +62,8 @@ if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
         RE_RUN_LIST+=($i)
     done
     MIN_PHASE=$FROM_PHASE
-    # If explicitly starting from a later phase, stop at 5. Otherwise default 2.
+    # If explicitly starting from a later phase, stop at 5. Otherwise default 3.
     if [ "$FROM_PHASE" -gt 1 ]; then STOP_PHASE=5; fi
-elif [[ $FROM_PHASE == ,* ]]; then
-    # Traditional behavior: from N to 5
-    for (( i=$FROM_PHASE; i<=4; i++ )); do
-        RE_RUN_LIST+=($i)
-    done
-    MIN_PHASE=$FROM_PHASE
-    STOP_PHASE=5
 elif [[ $FROM_PHASE == ,* ]]; then
     # Compact behavior: use all caches up to N
     STOP_PHASE=${FROM_PHASE#,}
@@ -159,11 +158,11 @@ fi
 check_stop 2
 
 if run_check 3 "${P3_JSON}"; then
-    echo -e "\n>>> 3. Strategic Planning Phase"
-    python3 ./rys/phase3_plan.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" --uuid "${rys_uuid}" ${common_args}
+    echo -e "\n>>> 3. Grouping Phase"
+    python3 ./rys/phase3_group.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" ${common_args} --uuid "${rys_uuid}"
 else
-    echo -e "\n>>> 3. Strategic Planning Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'\n{t[\"title\"]}\n{t.get(\"content\", \"\")}\nTopic: {t[\"topic\"]} [Strategic Roadmap] {t[\"refined_out\"].replace(\"\\n\", \" \")}') for t in d.get('planned_topics', [])]"
+    echo -e "\n>>> 3. Grouping Phase (Cached)"
+    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'  {req[\"skill\"]}: {req[\"request\"]}') for req in d.get('grouped_requests', [])]"
 fi
 check_stop 3
 

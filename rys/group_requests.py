@@ -1,143 +1,125 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Request Grouper v0.4
-Description:
-  Parses Dispatcher output and groups lines strictly by Skill ID.
-  Outputs:
-    Stdout: Markdown text for Titler (Visualization).
-    File:   /tmp/.rys.tmp.exec_plan.tsv (For main.sh execution).
-
-History:
-  1. 2025-12-29 Initial version
-  2. 2026-02-07 Refactored for Pylint compliance and modularity
+Grouping Phase Core Logic (v1.1)
+Strictly follows the 3-step decomposition requested by the user.
 """
-# pylint: disable=useless-return
 
 import sys
+import os
+import json
 import re
-import argparse
-from collections import defaultdict
-from typing import Dict, List
+import subprocess
+from typing import List, Dict, Any
 
+def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: str, model: str) -> List[str]:
+    """Step 3 (Gemma-3N): Intelligent grouping."""
+    print("Phase3-Step3(gemma-3n):")
+    
+    # Format Input for LLM
+    input_text = f"  {skill}: {', '.join([t['id'] for t in topics])}\n"
+    for t in topics:
+        input_text += f"    {t['id']}: {t['raw']}\n"
+    
+    print("Input for LLM:")
+    print(input_text.rstrip())
 
-def parse_line(line: str, idontknow_counter: int) -> tuple:
-    """
-    Parses a single line of dispatcher output.
-    Returns (skill_id, desc, updated_counter).
-    """
-    skill_id = "UNKNOWN"
-    desc = ""
-    updated_counter = idontknow_counter
+    # Call invoke_role.py
+    cmd = [
+        "python3", "./rys/invoke_role.py",
+        f"--host={host}",
+        f"--role=grouper",
+        f"--prompt={input_text}",
+        f"--model={model}"
+    ]
+    if port:
+        cmd.append(f"--port={port}")
 
-    if line.strip():
-        parts = line.split('|')
-        if len(parts) >= 3:
-            # Original Phrase (2nd part) contains more details (e.g., "up to 100")
-            desc = parts[1].strip()
+    try:
+        # Capture the result
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        # Parse output (only REQUEST lines)
+        output_lines = []
+        print("\nOutput from LLM:")
+        for line in result.stdout.strip().split('\n'):
+            line = line.strip()
+            if line.startswith("REQUEST:"):
+                print(f"  {line}")
+                output_lines.append(line)
+        
+        return output_lines
+    except Exception as e:
+        sys.stderr.write(f"Error calling grouper LLM: {e}\n")
+        return [f"REQUEST: {t['id']}" for t in topics]
 
-            # Status (Last part)
-            status_part = parts[-1].strip()
+def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Dict[str, Any]:
+    # Step 1: Assign TOPIC<N> IDs (Python)
+    print("Phase3-Step1(python):")
+    lines = [line.strip() for line in dispatch_text.strip().split('\n') if line.strip()]
+    all_topics = []
+    for i, line in enumerate(lines, 1):
+        topic_id = f"TOPIC{i}"
+        
+        # Simple skill extraction
+        skill = "IDONTKNOW"
+        if "| SKILLS: " in line:
+            skill = line.split("| SKILLS: ")[-1].strip()
+        elif "| IDONTKNOW: " in line:
+            skill = "IDONTKNOW"
+            
+        t_data = {"id": topic_id, "raw": line, "skill": skill}
+        all_topics.append(t_data)
+        print(f"  {topic_id}: {line}")
 
-            # Robust ID Extraction
-            skill_match = re.search(r'SKILLS:\s*([^\s]+)', status_part)
+    # Step 2: Group by Skill (Python)
+    print("\nPhase3-Step2(python):")
+    skill_groups = {}
+    for t in all_topics:
+        s = t["skill"]
+        if s not in skill_groups:
+            skill_groups[s] = []
+        skill_groups[s].append(t)
+    
+    for skill, topics in skill_groups.items():
+        print(f"  {skill}: {', '.join([t['id'] for t in topics])}")
 
-            if skill_match:
-                skill_id = skill_match.group(1).strip()
-            elif "IDONTKNOW" in status_part:
-                # Create unique key for each failure
-                reason = status_part.replace('IDONTKNOW:', '').strip()
-                skill_id = f"IDONTKNOW__{idontknow_counter}__{reason}"
-                updated_counter += 1
-            elif not any(x in status_part for x in ["IDONTKNOW", "UNKNOWN"]):
-                # If no SKILLS prefix, but looks like a skill ID (no spaces)
-                cleaned_status = status_part.strip()
-                if cleaned_status and " " not in cleaned_status:
-                    skill_id = cleaned_status
+    # Step 3: LLM Grouping (Gemma-3N)
+    print("")
+    final_requests = []
+    sorted_skills = sorted(skill_groups.keys(), key=lambda x: (x == "IDONTKNOW", x))
 
-    return skill_id, desc, updated_counter
-
-
-def parse_input(input_data: str) -> Dict[str, List[str]]:
-    """
-    Parses the entire input string and groups descriptions by skill ID.
-    """
-    groups = defaultdict(list)
-    idontknow_counter = 1
-
-    lines = input_data.split('\n')
-    for line in lines:
-        skill_id, desc, idontknow_counter = parse_line(line, idontknow_counter)
-        if desc:
-            groups[skill_id].append(desc)
-
-    return dict(groups)
-
-
-def output_visualization(groups: Dict[str, List[str]]) -> None:
-    """
-    Prints the grouped requests to stdout for visualization.
-    """
-    req_index = 1
-    for key, descriptions in groups.items():
-        if key.startswith("IDONTKNOW__"):
-            reason = key.split("__", 2)[2]
-            print(f"REQUEST {req_index} [Status: Unable to Process ({reason})]:")
+    for skill in sorted_skills:
+        topics = skill_groups[skill]
+        if skill == "IDONTKNOW" or len(topics) <= 1:
+            # Simple bypass for non-complex groups
+            for t in topics:
+                final_requests.append({"skill": skill, "request": f"REQUEST: {t['id']}", "topics": [t]})
         else:
-            print(f"REQUEST {req_index} [Skill: {key}]:")
+            # Multi-topic group
+            llm_results = run_grouper_llm(skill, topics, host, port, model)
+            for req_str in llm_results:
+                ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
+                req_topics = [t for t in topics if t["id"] in ids]
+                final_requests.append({"skill": skill, "request": req_str, "topics": req_topics})
 
-        for desc in descriptions:
-            print(f"- TOPIC: {desc}")
-
-        print("")
-        req_index += 1
-
-    return None
-
-
-def output_execution_plan(groups: Dict[str, List[str]], plan_file: str) -> None:
-    """
-    Writes the execution plan to a TSV file.
-    """
-    with open(plan_file, 'w', encoding='utf-8') as f:
-        req_index = 1
-        for key, descriptions in groups.items():
-            # Skip IDONTKNOW tasks for execution plan
-            if key.startswith("IDONTKNOW__") or key == "UNKNOWN":
-                req_index += 1
-                continue
-
-            # One line per topic
-            for desc in descriptions:
-                # Line: index \t skill_id \t topic
-                f.write(f"{req_index}\t{key}\t{desc}\n")
-            req_index += 1
-
-    return None
-
-
-def main() -> None:
-    """
-    Main entry point for Request Grouper.
-    """
-    parser = argparse.ArgumentParser(description="Request Grouper v0.4")
-    parser.add_argument("--plan-file", help="Path to save the execution plan (TSV)")
-    args = parser.parse_args()
-
-    # Read stdin
-    input_data = sys.stdin.read().strip()
-    if input_data:
-        groups = parse_input(input_data)
-
-        # 1. Output for Visualization (Stdout -> Titler)
-        output_visualization(groups)
-
-        # 2. Output for Execution (File -> main.sh)
-        if args.plan_file:
-            output_execution_plan(groups, args.plan_file)
-
-    return None
-
+    return {
+        "all_topics": all_topics,
+        "skill_groups": skill_groups,
+        "grouped_requests": final_requests
+    }
 
 if __name__ == "__main__":
-    main()
+    # Same as before
+    dispatch_file = sys.argv[1] if len(sys.argv) > 1 else None
+    if dispatch_file and os.path.exists(dispatch_file):
+        with open(dispatch_file, 'r') as f:
+            dispatch_text = f.read()
+    else:
+        sys.exit(1)
+        
+    host = os.environ.get("RYS_LLM_HOST", "localhost")
+    port = os.environ.get("RYS_LLM_PORT", "")
+    model = os.environ.get("RYS_LLM_MODEL", "gemma3n:e4b")
+    
+    process_grouping(dispatch_text, host, port, model)
