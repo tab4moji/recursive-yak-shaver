@@ -11,6 +11,7 @@ MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 FROM_PHASE=1
 PROMPT=""
 AUTO_MODE=""
+STOP_PHASE=2
 
 # Simple Argument Parsing
 for arg in "$@"; do
@@ -46,10 +47,18 @@ common_args="--host ${HOST} --port ${PORT} --model ${MODEL}"
 IFS=',' read -ra TARGET_PHASES <<< "$FROM_PHASE"
 RE_RUN_LIST=()
 MIN_PHASE=5
-STOP_PHASE=5
+STOP_PHASE=2
 ONLY_CACHE_USE=""
 
 if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
+    # Traditional behavior: from N to 5
+    for (( i=$FROM_PHASE; i<=4; i++ )); do
+        RE_RUN_LIST+=($i)
+    done
+    MIN_PHASE=$FROM_PHASE
+    # If explicitly starting from a later phase, stop at 5. Otherwise default 2.
+    if [ "$FROM_PHASE" -gt 1 ]; then STOP_PHASE=5; fi
+elif [[ $FROM_PHASE == ,* ]]; then
     # Traditional behavior: from N to 5
     for (( i=$FROM_PHASE; i<=4; i++ )); do
         RE_RUN_LIST+=($i)
