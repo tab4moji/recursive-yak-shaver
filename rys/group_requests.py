@@ -79,29 +79,34 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
         topic_map[topic_id] = t_data
         print(f"  {topic_id}: {line}")
 
-    # Step 2: Group by Skill (Python)
-    print("\nPhase3-Step2(python):")
-    skill_groups = {}
-    for t in all_topics:
-        s = t["skill"]
-        if s not in skill_groups:
-            skill_groups[s] = []
-        skill_groups[s].append(t)
-    
-    for skill, topics in skill_groups.items():
-        print(f"  {skill}: {', '.join([t['id'] for t in topics])}")
+    # Step 2: Group by Skill (Python) - REPLACED by Logical Grouping
+    # We now group all non-IDONTKNOW topics into one "executable" pool
+    # and let the LLM decide the logical sub-groups.
+    print("\nPhase3-Step2(python): Preparing for intelligent grouping...")
+    executable_topics = [t for t in all_topics if t["skill"] != "IDONTKNOW"]
+    idontknow_topics = [t for t in all_topics if t["skill"] == "IDONTKNOW"]
 
     # Step 3: LLM Grouping (Gemma-3N)
     print("")
     raw_requests = []
-    for skill, topics in skill_groups.items():
-        if skill == "IDONTKNOW" or len(topics) <= 1:
-            for t in topics:
-                raw_requests.append({"skill": skill, "topic_ids": [t["id"]]})
+    
+    # Handle IDONTKNOW separately (one request per topic)
+    for t in idontknow_topics:
+        raw_requests.append({"skill": "IDONTKNOW", "topic_ids": [t["id"]]})
+    
+    # Intelligent grouping for executable topics
+    if executable_topics:
+        if len(executable_topics) == 1:
+            t = executable_topics[0]
+            raw_requests.append({"skill": t["skill"], "topic_ids": [t["id"]]})
         else:
-            llm_results = run_grouper_llm(skill, topics, host, port, model)
+            # We pass all executable topics to the LLM
+            llm_results = run_grouper_llm("executable", executable_topics, host, port, model)
             for req_str in llm_results:
                 ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
+                # Determine the skill of the request (using the first topic's skill)
+                first_topic_id = ids[0] if ids else None
+                skill = topic_map.get(first_topic_id, {}).get("skill", "shell_exec")
                 raw_requests.append({"skill": skill, "topic_ids": ids})
 
     # Final Step: Sort and Number Requests with Titles

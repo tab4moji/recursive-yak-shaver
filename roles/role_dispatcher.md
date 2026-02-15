@@ -37,5 +37,11 @@ TOPIC: Find smallest file | Find the smallest file. | SKILLS: shell_exec
 TOPIC: Display file contents | Display the contents of the smallest file. | SKILLS: shell_exec
 TOPIC: Get weather | Tell me the weather. | IDONTKNOW: I do not have a way to retrieve weather information.
 
+Example 4: Search and Analyze
+Input: "Run pylint on the largest Python file in this directory."
+Output:
+TOPIC: Find largest Python file | Find the largest Python file in this directory. | SKILLS: shell_exec
+TOPIC: Run pylint | Run pylint on the largest Python file. | SKILLS: shell_exec
+
 ### Output Format (Strict Text):
 TOPIC: <Title> | <Original Phrase> | <SKILLS: id OR IDONTKNOW: reason>

@@ -33,6 +33,15 @@ def main():
         print(f"Path: {s['path']}")
         print(f"--------------------------------------------------")
         
+        # Display script content
+        try:
+            with open(s['path'], 'r', encoding='utf-8') as f:
+                print(f.read())
+        except Exception as e:
+            print(f"(Error reading script: {e})")
+        
+        print(f"--------------------------------------------------")
+        
         if not args.auto:
             choice = input("Execute? [y/N]: ").strip().lower()
             if choice != 'y':
