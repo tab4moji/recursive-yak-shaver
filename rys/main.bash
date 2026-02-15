@@ -4,13 +4,13 @@
 set -e
 
 # Configuration & Environment Variables
-HOST="${RYS_LLM_HOST:-localhost}"
-PORT="${RYS_LLM_PORT:-11434}"
-MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
+export RYS_LLM_HOST="${RYS_LLM_HOST:-localhost}"
+export RYS_LLM_PORT="${RYS_LLM_PORT:-11434}"
+export RYS_LLM_MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 
 FROM_PHASE=1
 PROMPT=""
-AUTO_MODE=""
+export RYS_AUTO="false"
 STOP_PHASE=3
 
 # Simple Argument Parsing
@@ -18,7 +18,7 @@ for arg in "$@"; do
     if [[ $arg == --from=* ]]; then
         FROM_PHASE=${arg#--from=}
     elif [[ $arg == "--auto" ]]; then
-        AUTO_MODE="--auto"
+        export RYS_AUTO="true"
     elif [[ -z "$PROMPT" ]]; then
         PROMPT="$arg"
     fi
@@ -41,7 +41,7 @@ P2_JSON="./tmp/.rys.${prompt_hash}.p2.json"
 P3_JSON="./tmp/.rys.${prompt_hash}.p3.json"
 P4_JSON="./tmp/.rys.${prompt_hash}.p4.json"
 
-common_args="--host ${HOST} --port ${PORT} --model ${MODEL}"
+common_args="--host ${RYS_LLM_HOST} --port ${RYS_LLM_PORT} --model ${RYS_LLM_MODEL}"
 
 # Force clear sub-caches for specified phases
 IFS=',' read -ra TARGET_PHASES <<< "$FROM_PHASE"
@@ -100,6 +100,7 @@ if [[ ! $FROM_PHASE =~ ^[0-9]+$ ]]; then
 fi
 
 rys_uuid="${prompt_hash}"
+export RYS_UUID="${rys_uuid}"
 echo "Session ID: ${rys_uuid}"
 
 # --- Helper for Phase Control ---
@@ -188,8 +189,8 @@ for (( i=0; i<$requests_count; i++ )); do
     
     if [ "$skill" == "IDONTKNOW" ]; then
         echo -e "\n>>> Skipping ${req_id} (Reason: Out of scope)"
-        # Optionally print the IDONTKNOW message from the first topic
-        python3 -c "import json; d=json.loads('${req_json}'); print(f'Message: {d[\"topics\"][0][\"raw\"].split(\"| IDONTKNOW: \")[-1]}')"
+        # Use jq or simple python with stdin to avoid expansion issues
+        echo "$req_json" | python3 -c "import sys, json; d=json.load(sys.stdin); print(f'Message: {d[\"topics\"][0][\"raw\"].split(\"| IDONTKNOW: \")[-1].strip()}')"
         continue
     fi
 
