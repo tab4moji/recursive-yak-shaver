@@ -11,7 +11,7 @@ export RYS_LLM_MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 FROM_PHASE=1
 PROMPT=""
 export RYS_AUTO="false"
-STOP_PHASE=3
+STOP_PHASE=6
 
 # Simple Argument Parsing
 for arg in "$@"; do
@@ -34,55 +34,34 @@ mkdir -p ./tmp/
 
 # Generate Hash from prompt
 prompt_hash=$(printf "%s" "$PROMPT" | md5sum | cut -c1-8)
+export RYS_UUID="${prompt_hash}"
 
-# Define Phase JSON paths (v2.0 - 5 Phases Pipeline)
+# Define Phase JSON paths
 P1_JSON="./tmp/.rys.${prompt_hash}.p1.json"
 P2_JSON="./tmp/.rys.${prompt_hash}.p2.json"
 P3_JSON="./tmp/.rys.${prompt_hash}.p3.json"
 P4_JSON="./tmp/.rys.${prompt_hash}.p4.json"
+P5_JSON="./tmp/.rys.${prompt_hash}.p5.json"
 
 common_args="--host ${RYS_LLM_HOST} --port ${RYS_LLM_PORT} --model ${RYS_LLM_MODEL}"
 
-# Force clear sub-caches for specified phases
-IFS=',' read -ra TARGET_PHASES <<< "$FROM_PHASE"
-RE_RUN_LIST=()
-MIN_PHASE=5
+# --- Phase Control Logic ---
+MIN_PHASE=6
 ONLY_CACHE_USE=""
 
-# Default stop phase logic
-if [ "$FROM_PHASE" = "1" ]; then
-    STOP_PHASE=4
-else
-    STOP_PHASE=5
-fi
-
 if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
-    # Traditional behavior: from N to 5
-    for (( i=$FROM_PHASE; i<=4; i++ )); do
-        RE_RUN_LIST+=($i)
-    done
+    # Standard: From N to 6
     MIN_PHASE=$FROM_PHASE
-    # If explicitly starting from a later phase, stop at 5. Otherwise default 4.
-    if [ "$FROM_PHASE" -gt 1 ]; then STOP_PHASE=5; fi
 elif [[ $FROM_PHASE == ,* ]]; then
-    # Compact behavior: use all caches up to N
+    # Cache Priority: Use caches up to N
     STOP_PHASE=${FROM_PHASE#,}
     MIN_PHASE=1
     ONLY_CACHE_USE="true"
-    # No phases to re-run/clear
-else
-    # Explicit list: only specific phases, then stop at max
-    for p in "${TARGET_PHASES[@]}"; do
-        if [ -n "$p" ]; then
-            RE_RUN_LIST+=($p)
-            if [ "$p" -lt "$MIN_PHASE" ]; then MIN_PHASE=$p; fi
-            if [ "$p" -gt "$STOP_PHASE" ] || [ "$STOP_PHASE" -eq 5 ]; then STOP_PHASE=$p; fi
-        fi
-    done
 fi
 
+# Reset caches for phases that will be re-run (only in standard mode)
 if [ -z "$ONLY_CACHE_USE" ]; then
-    for p in "${RE_RUN_LIST[@]}"; do
+    for (( p=$MIN_PHASE; p<=6; p++ )); do
         if [ "$p" -ge 3 ]; then
             rm -f ./tmp/.rys.${prompt_hash}.*.p${p}*
             rm -f ./tmp/.rys.${prompt_hash}.p${p}.json
@@ -90,49 +69,33 @@ if [ -z "$ONLY_CACHE_USE" ]; then
     done
 fi
 
-echo ">>> Initializing Session (Hash: ${prompt_hash}, Starting from Phase: ${MIN_PHASE}, Stopping after Phase: ${STOP_PHASE})"
-if [[ ! $FROM_PHASE =~ ^[0-9]+$ ]]; then
-    if [ -n "$ONLY_CACHE_USE" ]; then
-        echo "Mode: Only use caches up to Phase ${STOP_PHASE}"
-    else
-        echo "Target re-run phases: ${RE_RUN_LIST[*]}"
-    fi
-fi
-
 rys_uuid="${prompt_hash}"
-export RYS_UUID="${rys_uuid}"
-echo "Session ID: ${rys_uuid}"
+echo "Session ID: ${rys_uuid} (Mode: ${FROM_PHASE}, Stop: ${STOP_PHASE})"
 
-# --- Helper for Phase Control ---
 run_check() {
     local phase_idx=$1
     local json_path=$2
 
     # In ONLY_CACHE_USE mode, always try to use cache first if it exists
     if [ -n "$ONLY_CACHE_USE" ] && [ -f "$json_path" ]; then
-        # return 1 means skip (Use cache)
-        return 1
+        return 1 # Skip (Use cache)
     fi
 
     if [ "$MIN_PHASE" -eq "$phase_idx" ]; then
-        return 0 # Always Run starting phase (unless in ONLY_CACHE_USE mode handled above)
+        return 0 # Always Run starting phase
     fi
     if [ "$MIN_PHASE" -gt "$phase_idx" ]; then
         if [ -f "$json_path" ]; then
             return 1 # Skip
         else
-            # Error out if cache is missing and we're not running to recover
-            # Note: The 'recover' logic was previously return 0 here.
-            # If we want to keep recover logic, we should return 0 but maybe mark it.
-            return 0
+            return 0 # Recover missing cache
         fi
     fi
     return 0 # Run
 }
 
 check_stop() {
-    local current_phase=$1
-    if [ "$current_phase" -eq "$STOP_PHASE" ]; then
+    if [ "$1" -eq "$STOP_PHASE" ]; then
         echo -e "\nReached Stop Phase: $STOP_PHASE. Exiting."
         exit 0
     fi
@@ -172,29 +135,22 @@ if run_check 4 "${P4_JSON}"; then
     python3 ./rys/phase4_request_loop.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
     echo -e "\n>>> 4. REQUEST Processing Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'Handled {req[\"id\"]} ({req[\"skill\"]})') for req in d.get('grouped_requests', [])]"
+    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'Handled {req[\"request_id\"]} ({req[\"skill\"]})') for req in d.get('integrated_requests', [])]"
 fi
 check_stop 4
 
-echo -e "\n>>> 5. Execution Phase (Looping through Requests)"
+if run_check 5 "${P5_JSON}"; then
+    echo -e "\n>>> 5. Script Generation Phase"
+    python3 ./rys/phase5_generate.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${rys_uuid}" ${common_args}
+else
+    echo -e "\n>>> 5. Script Generation Phase (Cached)"
+    python3 -c "import json; d=json.load(open('${P5_JSON}')); [print(f'Generated {s[\"request_id\"]} ({s[\"skill\"]}) -> {s[\"path\"]}') for s in d.get('generated_scripts', [])]"
+fi
+check_stop 5
 
-# Parse P4_JSON and call execute_request.bash for each integrated_request
-# We use python to extract each request as a JSON string to pass to the bash script
-requests_count=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(len(d.get('integrated_requests', [])))")
-
-for (( i=0; i<$requests_count; i++ )); do
-    req_id=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(d['integrated_requests'][$i]['request_id'])")
-    skill=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(d['integrated_requests'][$i]['skill'])")
-    req_json=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(json.dumps(d['integrated_requests'][$i]))")
-    
-    if [ "$skill" == "IDONTKNOW" ]; then
-        echo -e "\n>>> Skipping ${req_id} (Reason: Out of scope)"
-        # Use jq or simple python with stdin to avoid expansion issues
-        echo "$req_json" | python3 -c "import sys, json; d=json.load(sys.stdin); print(f'Message: {d[\"topics\"][0][\"raw\"].split(\"| IDONTKNOW: \")[-1].strip()}')"
-        continue
-    fi
-
-    ./rys/execute_request.bash "$req_id" "$skill" "$req_json"
-done
+echo -e "\n>>> 6. Execution Phase"
+auto_flag=""
+if [ "$RYS_AUTO" == "true" ]; then auto_flag="--auto"; fi
+python3 ./rys/phase6_execute.py --in-json "${P5_JSON}" $auto_flag
 
 echo -e "\nAll Done. Results stored in ./tmp/"
