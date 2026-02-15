@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Invoke Role Wrapper (v0.8)
+Invoke Role Wrapper (v0.9)
 Centralized hub for all role-based LLM interactions with analysis capabilities.
 """
 # pylint: disable=duplicate-code,useless-return,broad-exception-caught
@@ -44,7 +44,8 @@ def invoke_role_api(role: str, prompt: str, config: ChatConfig, colors: Terminal
                     skills: Optional[List[str]] = None, 
                     include_skills: bool = False, 
                     risks: Optional[str] = None,
-                    analyze: bool = False) -> str:
+                    analyze: bool = False,
+                    debug: bool = False) -> str:
     """Centralized API for invoking roles. All LLM calls pass through here."""
     base_dir = os.path.dirname(SCRIPT_DIR)
     
@@ -53,7 +54,13 @@ def invoke_role_api(role: str, prompt: str, config: ChatConfig, colors: Terminal
         base_dir, role, skills, include_skills, risks
     )
     
-    if analyze:
+    if debug:
+        print(f"\n{colors.sys_color}=== [DEBUG: SYSTEM PROMPT] ==={colors.reset_code}")
+        print(system_prompt)
+        print(f"{colors.sys_color}=== [DEBUG: USER PROMPT] ==={colors.reset_code}")
+        print(prompt)
+        print(f"{colors.sys_color}=============================={colors.reset_code}\n")
+    elif analyze:
         print(f"\n{colors.sys_color}=== [ANALYSIS: SYSTEM PROMPT] ==={colors.reset_code}")
         print(system_prompt)
         print(f"{colors.sys_color}==================================={colors.reset_code}\n")
@@ -98,6 +105,7 @@ def main() -> None:
         help="Skip SSL certificate verification"
     )
     parser.add_argument("--analyze", action="store_true", help="Enable analysis of LLM interaction")
+    parser.add_argument("--debug", "-d", action="store_true", help="Show system instruction and prompt")
 
     # Internal / Fixed args
     parser.add_argument(
@@ -143,7 +151,7 @@ def main() -> None:
 
         invoke_role_api(args.role, args.prompt, config, colors, 
                         skills=skill_filter, include_skills=include_skills, 
-                        risks=args.risks, analyze=args.analyze)
+                        risks=args.risks, analyze=args.analyze, debug=args.debug)
         
     except Exception as exc:  # pylint: disable=broad-exception-caught
         sys.stderr.write(f"Error: {exc}\n")
