@@ -43,6 +43,7 @@ def parse_skills_arg(value: Optional[str]) -> Optional[List[str]]:
 def invoke_role_api(role: str, prompt: str, config: ChatConfig, colors: TerminalColors, 
                     skills: Optional[List[str]] = None, 
                     include_skills: bool = False, 
+                    include_cheatsheet: bool = True,
                     risks: Optional[str] = None,
                     analyze: bool = False,
                     debug: bool = False) -> str:
@@ -51,12 +52,34 @@ def invoke_role_api(role: str, prompt: str, config: ChatConfig, colors: Terminal
     
     # 1. System Prompt Construction
     system_prompt = construct_system_prompt(
-        base_dir, role, skills, include_skills, risks
+        base_dir, role, skills, include_skills, risks, include_cheatsheet
     )
     
     if debug:
         print(f"\n{colors.sys_color}=== [DEBUG: SYSTEM PROMPT] ==={colors.reset_code}")
-        print(system_prompt)
+        
+        # Colorize skills and cheatsheets for readability in debug output
+        display_prompt = system_prompt
+        if colors.skill_color:
+            # We look for the exact section headers (at the start of a line)
+            sections = [
+                "\n# Available Skills definition",
+                "\n# Tool Reference / Cheatsheets"
+            ]
+            for section in sections:
+                if section in display_prompt:
+                    display_prompt = display_prompt.replace(
+                        section, f"\n{colors.skill_color}{section.lstrip()}"
+                    )
+            
+            # Reset at the next major section that is NOT part of skills
+            display_prompt = display_prompt.replace("\n# Risk Knowledge Base", f"{colors.reset_code}\n# Risk Knowledge Base")
+            
+            # Final safety reset at the end of the prompt
+            if colors.skill_color in display_prompt and colors.reset_code not in display_prompt.split(colors.skill_color)[-1]:
+                display_prompt += colors.reset_code
+
+        print(display_prompt)
         print(f"{colors.sys_color}=== [DEBUG: USER PROMPT] ==={colors.reset_code}")
         print(prompt)
         print(f"{colors.sys_color}=============================={colors.reset_code}\n")
@@ -93,8 +116,10 @@ def main() -> None:
     parser.add_argument("--role", default="gemma", help="Role name")
     parser.add_argument("--prompt", help="User prompt text")
     parser.add_argument(
-        "--skills", nargs='?', const='__ALL__', default=argparse.SUPPRESS,
-        help="Include skills."
+        "--skills", help="Include specific skills (comma-separated) or 'all'."
+    )
+    parser.add_argument(
+        "--no-skills", action="store_true", help="Explicitly disable skills."
     )
     parser.add_argument("--risks", help="Path to risks.json file")
     parser.add_argument("--host", default="localhost", help="Target Host IP")
@@ -141,16 +166,30 @@ def main() -> None:
             insecure=args.insecure
         )
 
-        include_skills = 'skills' in args
+        # New Skill Logic
+        include_skills = False
         skill_filter = None
-        if include_skills:
-            if args.skills == '__ALL__':
+        include_cheatsheet = True
+
+        if args.no_skills:
+            include_skills = False
+        elif args.skills:
+            include_skills = True
+            if args.skills.lower() == 'all':
                 skill_filter = None
+                include_cheatsheet = False
             else:
                 skill_filter = parse_skills_arg(args.skills)
+                include_cheatsheet = True
+        else:
+            # Default behavior when no arguments are specified: same as --skills=all
+            include_skills = True
+            skill_filter = None
+            include_cheatsheet = False
 
         invoke_role_api(args.role, args.prompt, config, colors, 
                         skills=skill_filter, include_skills=include_skills, 
+                        include_cheatsheet=include_cheatsheet,
                         risks=args.risks, analyze=args.analyze, debug=args.debug)
         
     except Exception as exc:  # pylint: disable=broad-exception-caught

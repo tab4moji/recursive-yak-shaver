@@ -30,6 +30,7 @@ class TerminalColors:
         self.ai_color = ""
         self.sys_color = ""
         self.err_color = ""
+        self.skill_color = ""
         self.prompt_prefix = ""
         self.prompt_suffix = ""
 
@@ -39,6 +40,7 @@ class TerminalColors:
             self.ai_color = "\033[32m"    # Green
             self.sys_color = "\033[33m"   # Yellow
             self.err_color = "\033[31m"   # Red
+            self.skill_color = "\033[92m" # Bright Green
 
             if HAS_READLINE:
                 self.prompt_prefix = f"\001{self.user_color}\002"

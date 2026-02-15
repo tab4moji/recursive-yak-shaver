@@ -1,17 +1,5 @@
 [
   {
-    "id": "web_access",
-    "type": "primitive",
-    "description": "General HTTP access tools for online information (weather, news, etc).",
-    "tools": ["curl", "wget"]
-  },
-  {
-    "id": "shell_exec",
-    "type": "primitive",
-    "description": "File system operations (read, write, list, search, check size, sort).",
-    "tools": ["ls", "grep", "cat", "find", "du", "sort", "head", "tail"]
-  },
-  {
     "id": "python_math",
     "type": "primitive",
     "description": "Advanced mathematical calculations (prime numbers, algebra) using Python + SymPy.",
@@ -22,5 +10,11 @@
     "type": "primitive",
     "description": "Text processing, data formatting, and logic scripting using Python.",
     "tools": ["python3", "pip"]
+  },
+  {
+    "id": "shell_exec",
+    "type": "primitive",
+    "description": "Experimental shell execution tools.",
+    "tools": ["find", "cat", "du", "sort", "head"]
   }
 ]

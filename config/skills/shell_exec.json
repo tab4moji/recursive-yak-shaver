@@ -1,7 +1,7 @@
 {
-  "id": "shell_exec",
-  "name": "Shell Execution (Bash)",
-  "description": "Standard pipe-ready tools for file and text processing.",
+  "id": "shell_exec2",
+  "name": "Shell Execution v2",
+  "description": "Standard tools for file processing.",
   "patterns": [
     {
       "task": "Enumerate files",
@@ -11,11 +11,6 @@
     {
       "task": "Enumerate files has the extention",
       "recommended": "find . -type f -name *.py",
-      "output_type": "List"
-    },
-    {
-      "task": "Enumerate directories",
-      "recommended": "find . -type d",
       "output_type": "List"
     },
     {
@@ -38,11 +33,6 @@
     {
       "task": "Select first item",
       "recommended": "head -n 1",
-      "output_type": "Single"
-    },
-    {
-      "task": "Extract path only",
-      "recommended": "cut -f2-",
       "output_type": "Single"
     }
   ]
