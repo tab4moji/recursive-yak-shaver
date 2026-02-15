@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Grouping Phase Core Logic (v1.2)
-Step 1: ID Assignment
+Grouping Phase Core Logic (v1.3)
+Step 1: ID Assignment + Title Extraction
 Step 2: Skill-based grouping
 Step 3: LLM-based intelligent grouping
-Final: Sequence numbering
+Final: Sequence numbering with titles
 """
 
 import sys
@@ -53,20 +53,30 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: s
         return [f"REQUEST: {t['id']}" for t in topics]
 
 def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Dict[str, Any]:
-    # Step 1: Assign TOPIC<N> IDs (Python)
+    # Step 1: Assign TOPIC<N> IDs + Extract Titles (Python)
     print("Phase3-Step1(python):")
     lines = [line.strip() for line in dispatch_text.strip().split('\n') if line.strip()]
     all_topics = []
+    topic_map = {}
+    
     for i, line in enumerate(lines, 1):
         topic_id = f"TOPIC{i}"
+        
+        # Extract title from "TOPIC: <Title> |"
+        title = "Unknown"
+        title_match = re.match(r"^TOPIC:\s*(.*?)\s*\|", line)
+        if title_match:
+            title = title_match.group(1)
+            
         skill = "IDONTKNOW"
         if "| SKILLS: " in line:
             skill = line.split("| SKILLS: ")[-1].strip()
         elif "| IDONTKNOW: " in line:
             skill = "IDONTKNOW"
             
-        t_data = {"id": topic_id, "raw": line, "skill": skill}
+        t_data = {"id": topic_id, "title": title, "raw": line, "skill": skill}
         all_topics.append(t_data)
+        topic_map[topic_id] = t_data
         print(f"  {topic_id}: {line}")
 
     # Step 2: Group by Skill (Python)
@@ -94,8 +104,7 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
                 ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
                 raw_requests.append({"skill": skill, "topic_ids": ids})
 
-    # Final Step: Sort and Number Requests
-    # Sort by the minimum TOPIC index in each request to preserve original order
+    # Final Step: Sort and Number Requests with Titles
     def get_min_topic_idx(req):
         return min([int(tid.replace("TOPIC", "")) for tid in req["topic_ids"]])
 
@@ -105,9 +114,18 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
     print("\nFinal Grouped Requests:")
     for i, req in enumerate(raw_requests, 1):
         req_id = f"REQUEST{i}"
-        topic_str = ", ".join(req["topic_ids"])
+        
+        # Build topic string like "TOPIC3(Find smallest file), TOPIC4(Display smallest file)"
+        topic_parts = []
+        for tid in req["topic_ids"]:
+            t_info = topic_map.get(tid, {})
+            title = t_info.get("title", "Unknown")
+            topic_parts.append(f"{tid}({title})")
+            
+        topic_str = ", ".join(topic_parts)
         display_str = f"{req_id}: {topic_str}"
         print(display_str)
+        
         final_requests.append({
             "id": req_id,
             "skill": req["skill"],
