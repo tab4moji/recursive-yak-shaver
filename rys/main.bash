@@ -175,7 +175,25 @@ else
 fi
 check_stop 4
 
-echo -e "\n>>> 5. Execution Loop (Interactive)"
-python3 ./rys/phase5_execute.py --in-json "${P4_JSON}" ${AUTO_MODE}
+echo -e "\n>>> 5. Execution Phase (Looping through Requests)"
+
+# Parse P4_JSON and call execute_request.bash for each integrated_request
+# We use python to extract each request as a JSON string to pass to the bash script
+requests_count=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(len(d.get('integrated_requests', [])))")
+
+for (( i=0; i<$requests_count; i++ )); do
+    req_id=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(d['integrated_requests'][$i]['request_id'])")
+    skill=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(d['integrated_requests'][$i]['skill'])")
+    req_json=$(python3 -c "import json; d=json.load(open('${P4_JSON}')); print(json.dumps(d['integrated_requests'][$i]))")
+    
+    if [ "$skill" == "IDONTKNOW" ]; then
+        echo -e "\n>>> Skipping ${req_id} (Reason: Out of scope)"
+        # Optionally print the IDONTKNOW message from the first topic
+        python3 -c "import json; d=json.loads('${req_json}'); print(f'Message: {d[\"topics\"][0][\"raw\"].split(\"| IDONTKNOW: \")[-1]}')"
+        continue
+    fi
+
+    ./rys/execute_request.bash "$req_id" "$skill" "$req_json"
+done
 
 echo -e "\nAll Done. Results stored in ./tmp/"
