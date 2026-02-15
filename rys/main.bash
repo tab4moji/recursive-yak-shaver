@@ -12,6 +12,7 @@ FROM_PHASE=1
 PROMPT=""
 export RYS_AUTO="false"
 STOP_PHASE=6
+REQ_FILTER=""
 
 # Simple Argument Parsing
 for arg in "$@"; do
@@ -19,6 +20,8 @@ for arg in "$@"; do
         FROM_PHASE=${arg#--from=}
     elif [[ $arg == "--auto" ]]; then
         export RYS_AUTO="true"
+    elif [[ $arg == --request=* ]]; then
+        REQ_FILTER="${arg#--request=}"
     elif [[ -z "$PROMPT" ]]; then
         PROMPT="$arg"
     fi
@@ -49,7 +52,11 @@ common_args="--host ${RYS_LLM_HOST} --port ${RYS_LLM_PORT} --model ${RYS_LLM_MOD
 MIN_PHASE=6
 ONLY_CACHE_USE=""
 
-if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
+if [[ $FROM_PHASE =~ ^([0-9]+),([0-9]+)$ ]]; then
+    # Range mode: START,STOP
+    MIN_PHASE="${BASH_REMATCH[1]}"
+    STOP_PHASE="${BASH_REMATCH[2]}"
+elif [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
     # Standard: From N to 6
     MIN_PHASE=$FROM_PHASE
 elif [[ $FROM_PHASE == ,* ]]; then
@@ -141,7 +148,9 @@ check_stop 4
 
 if run_check 5 "${P5_JSON}"; then
     echo -e "\n>>> 5. Script Generation Phase"
-    python3 ./rys/phase5_generate.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${rys_uuid}" ${common_args}
+    req_arg=""
+    if [ -n "$REQ_FILTER" ]; then req_arg="--request=${REQ_FILTER}"; fi
+    python3 ./rys/phase5_generate.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${rys_uuid}" ${common_args} ${req_arg}
 else
     echo -e "\n>>> 5. Script Generation Phase (Cached)"
     python3 -c "import json; d=json.load(open('${P5_JSON}')); [print(f'Generated {s[\"request_id\"]} ({s[\"skill\"]}) -> {s[\"path\"]}') for s in d.get('generated_scripts', [])]"
