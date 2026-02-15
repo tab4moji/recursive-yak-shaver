@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Grouping Phase Core Logic (v1.1)
-Strictly follows the 3-step decomposition requested by the user.
+Grouping Phase Core Logic (v1.2)
+Step 1: ID Assignment
+Step 2: Skill-based grouping
+Step 3: LLM-based intelligent grouping
+Final: Sequence numbering
 """
 
 import sys
@@ -16,7 +19,6 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: s
     """Step 3 (Gemma-3N): Intelligent grouping."""
     print("Phase3-Step3(gemma-3n):")
     
-    # Format Input for LLM
     input_text = f"  {skill}: {', '.join([t['id'] for t in topics])}\n"
     for t in topics:
         input_text += f"    {t['id']}: {t['raw']}\n"
@@ -24,7 +26,6 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: s
     print("Input for LLM:")
     print(input_text.rstrip())
 
-    # Call invoke_role.py
     cmd = [
         "python3", "./rys/invoke_role.py",
         f"--host={host}",
@@ -36,10 +37,8 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: s
         cmd.append(f"--port={port}")
 
     try:
-        # Capture the result
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
-        # Parse output (only REQUEST lines)
         output_lines = []
         print("\nOutput from LLM:")
         for line in result.stdout.strip().split('\n'):
@@ -60,8 +59,6 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
     all_topics = []
     for i, line in enumerate(lines, 1):
         topic_id = f"TOPIC{i}"
-        
-        # Simple skill extraction
         skill = "IDONTKNOW"
         if "| SKILLS: " in line:
             skill = line.split("| SKILLS: ")[-1].strip()
@@ -86,37 +83,48 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
 
     # Step 3: LLM Grouping (Gemma-3N)
     print("")
-    final_requests = []
-    sorted_skills = sorted(skill_groups.keys(), key=lambda x: (x == "IDONTKNOW", x))
-
-    for skill in sorted_skills:
-        topics = skill_groups[skill]
+    raw_requests = []
+    for skill, topics in skill_groups.items():
         if skill == "IDONTKNOW" or len(topics) <= 1:
-            # Simple bypass for non-complex groups
             for t in topics:
-                final_requests.append({"skill": skill, "request": f"REQUEST: {t['id']}", "topics": [t]})
+                raw_requests.append({"skill": skill, "topic_ids": [t["id"]]})
         else:
-            # Multi-topic group
             llm_results = run_grouper_llm(skill, topics, host, port, model)
             for req_str in llm_results:
                 ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
-                req_topics = [t for t in topics if t["id"] in ids]
-                final_requests.append({"skill": skill, "request": req_str, "topics": req_topics})
+                raw_requests.append({"skill": skill, "topic_ids": ids})
+
+    # Final Step: Sort and Number Requests
+    # Sort by the minimum TOPIC index in each request to preserve original order
+    def get_min_topic_idx(req):
+        return min([int(tid.replace("TOPIC", "")) for tid in req["topic_ids"]])
+
+    raw_requests.sort(key=get_min_topic_idx)
+    
+    final_requests = []
+    print("\nFinal Grouped Requests:")
+    for i, req in enumerate(raw_requests, 1):
+        req_id = f"REQUEST{i}"
+        topic_str = ", ".join(req["topic_ids"])
+        display_str = f"{req_id}: {topic_str}"
+        print(display_str)
+        final_requests.append({
+            "id": req_id,
+            "skill": req["skill"],
+            "topics": req["topic_ids"],
+            "display": display_str
+        })
 
     return {
         "all_topics": all_topics,
-        "skill_groups": skill_groups,
         "grouped_requests": final_requests
     }
 
 if __name__ == "__main__":
-    # Same as before
-    dispatch_file = sys.argv[1] if len(sys.argv) > 1 else None
-    if dispatch_file and os.path.exists(dispatch_file):
-        with open(dispatch_file, 'r') as f:
-            dispatch_text = f.read()
-    else:
-        sys.exit(1)
+    import os
+    dispatch_text = sys.stdin.read() if not sys.stdin.isatty() else ""
+    if not dispatch_text:
+        sys.exit(0)
         
     host = os.environ.get("RYS_LLM_HOST", "localhost")
     port = os.environ.get("RYS_LLM_PORT", "")

@@ -162,7 +162,7 @@ if run_check 3 "${P3_JSON}"; then
     python3 ./rys/phase3_group.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" ${common_args} --uuid "${rys_uuid}"
 else
     echo -e "\n>>> 3. Grouping Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(f'  {req[\"skill\"]}: {req[\"request\"]}') for req in d.get('grouped_requests', [])]"
+    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(req['display']) for req in d.get('grouped_requests', [])]"
 fi
 check_stop 3
 
