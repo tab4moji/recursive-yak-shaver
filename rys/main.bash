@@ -51,7 +51,7 @@ ONLY_CACHE_USE=""
 
 # Default stop phase logic
 if [ "$FROM_PHASE" = "1" ]; then
-    STOP_PHASE=3
+    STOP_PHASE=4
 else
     STOP_PHASE=5
 fi
@@ -62,7 +62,7 @@ if [[ $FROM_PHASE =~ ^[0-9]+$ ]]; then
         RE_RUN_LIST+=($i)
     done
     MIN_PHASE=$FROM_PHASE
-    # If explicitly starting from a later phase, stop at 5. Otherwise default 3.
+    # If explicitly starting from a later phase, stop at 5. Otherwise default 4.
     if [ "$FROM_PHASE" -gt 1 ]; then STOP_PHASE=5; fi
 elif [[ $FROM_PHASE == ,* ]]; then
     # Compact behavior: use all caches up to N
@@ -167,11 +167,11 @@ fi
 check_stop 3
 
 if run_check 4 "${P4_JSON}"; then
-    echo -e "\n>>> 4. Step-by-Step Coding Phase"
-    python3 ./rys/phase4_code.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
+    echo -e "\n>>> 4. REQUEST Processing Phase"
+    python3 ./rys/phase4_request_loop.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${rys_uuid}" ${common_args}
 else
-    echo -e "\n>>> 4. Step-by-Step Coding Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'\n{s[\"title\"]}\nFile: {s[\"path\"]}') for s in d.get('scripts', [])]"
+    echo -e "\n>>> 4. REQUEST Processing Phase (Cached)"
+    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'Handled {req[\"id\"]} ({req[\"skill\"]})') for req in d.get('grouped_requests', [])]"
 fi
 check_stop 4
 
