@@ -108,10 +108,9 @@ def run_embedding(args: argparse.Namespace) -> None:
         v2 = get_embedding(inputs[2], args.model, base_url, colors, args)
         similarity = cosine_similarity(v1, v2)
         if args.raw:
-            print(json.dumps({"similarity": similarity, "distance": 1.0 - similarity}))
+            print(json.dumps({"similarity": similarity}))
         else:
             print(f"Cosine Similarity: {similarity:.4f}")
-            print(f"Cosine Distance:   {1.0 - similarity:.4f}")
     elif len(inputs) == 2:
         # Implicit diff mode: ./embedding.py "text1" "text2"
         v1 = get_embedding(inputs[0], args.model, base_url, colors, args)
