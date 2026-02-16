@@ -8,7 +8,7 @@ export RYS_LLM_HOST="${RYS_LLM_HOST:-localhost}"
 export RYS_LLM_PORT="${RYS_LLM_PORT:-11434}"
 export RYS_LLM_MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 
-FROM_PHASE=1
+FROM_PHASE=4,6
 PROMPT=""
 export RYS_AUTO="false"
 STOP_PHASE=6

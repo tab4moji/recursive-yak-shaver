@@ -32,8 +32,8 @@ You can control the pipeline execution and caching behavior using the `--from` p
 
 | Command Pattern | Mode | Description |
 | :--- | :--- | :--- |
-| `./rys/main.bash "..."` | **Default** | Runs all phases from 1 to 5. |
-| `--from=N` | **Resume** | Re-runs from Phase N to 5, clearing caches for Phase N and beyond. |
+| `./rys/main.bash "..."` | **Default** | Runs from Phase 4 to 6 (using caches for Phase 1-3 if available). |
+| `--from=N` | **Resume** | Re-runs from Phase N to 6, clearing caches for Phase N and beyond. |
 | `--from=N,M` | **Selective** | Runs only the specified phases (e.g., `3,3` to only re-run Planning). |
 | `--from=,N` | **Cache-Only** | Runs from Phase 1 to N using **existing caches only** (no re-generation). |
 
