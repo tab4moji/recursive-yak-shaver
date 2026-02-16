@@ -164,3 +164,23 @@ def stream_chat_completion(
     except Exception as exc: # pylint: disable=broad-exception-caught
         yield f"\n{colors.wrap_error(f'[Error] {exc}')}"
     return None
+
+def call_embedding_api(
+    url: str,
+    model: str,
+    input_text: str,
+    insecure: bool = False
+) -> Dict[str, Any]:
+    """Calls the embedding API and returns the response."""
+    headers = {"Content-Type": "application/json", "Authorization": "Bearer not-needed"}
+    payload = {"model": model, "input": input_text}
+    ctx = get_ssl_context(insecure)
+
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(req, context=ctx) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as exc: # pylint: disable=broad-exception-caught
+        return {"error": str(exc)}
+    
