@@ -4,20 +4,22 @@
 
 ## 🚀 Key Architectural Pillars
 
+- **Content-Based Caching**: Caches are now tied to the **hash of the input content** for each phase. If the translation or dispatch result remains identical, subsequent phases are reused, significantly accelerating the development cycle.
+- **Config-Aware Invalidation**: RYS automatically detects changes in your `config/skills/*.json` files. Tweaking a cheatsheet will automatically invalidate related downstream caches.
 - **Mono-Role Responsibility**: Each phase is governed by a single, specialized role (Engineer for planning, Coder for implementation) to ensure focused reasoning and prevent logic leakage.
 - **Discovery-Action Pairing**: Complex tasks are split into "Discovery" (Locating target) and "Action" (Executing operation) milestones to ensure reliability.
 - **Affirmative Control**: All role directives and cheatsheets use purely affirmative language ("Do this") to maximize LLM instruction-following and stability.
-- **MANDATORY HEREDOC**: Every Python execution is wrapped in a heredoc (`python3 << 'EOF'`) to prevent syntax errors and quote escaping issues.
 
 ## 🕹 Usage & Phase Control (`--from`)
 
-You can control the pipeline execution and caching behavior using the `--from` parameter. **By default, RYS prioritizes cache for stable early phases (1-3).**
+You can control the pipeline execution and caching behavior using the `--from` parameter. **By default, RYS prioritizes cache for ALL phases.**
 
 | Command Pattern | Mode | Description |
 | :--- | :--- | :--- |
-| `./rys/main.bash "..."` | **Default** | Runs from Phase 4 to 6 (uses caches for Phase 1-3 if available). Equivalent to `--from=4,6`. |
-| `--from=N` | **Resume** | Re-runs from Phase N to 6, clearing caches for Phase N and beyond. |
+| `./rys/main.bash "..."` | **Default** | Uses caches for all phases where available. Only executes Phase 6 if everything is cached. |
+| `--from=4,6` | **Standard** | Re-runs from Phase 4 to 6. |
 | `--from=5,6` | **Implementation** | **Recommended.** Re-runs only Coding and Execution using the existing strategic plan (Phase 4). |
+| `--from=1` | **Full Reset** | Clears all caches and starts over from Phase 1. |
 | `--from=,N` | **Cache-Only** | Runs from Phase 1 to N using **existing caches only** (no re-generation). |
 
 ### Examples:
