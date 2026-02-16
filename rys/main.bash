@@ -180,4 +180,8 @@ auto_flag=""
 if [ "$RYS_AUTO" == "true" ]; then auto_flag="--auto"; fi
 python3 ./rys/phase6_execute.py --in-json "${P5_JSON}" $auto_flag
 
+# --- Utility Hooks (Future Extensions) ---
+# Example: RAG / Semantic Search
+# python3 ./rys/embedding.py "Search Query" --quiet
+
 echo -e "\nAll Done. Results stored in ./tmp/"

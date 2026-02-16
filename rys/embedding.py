@@ -11,6 +11,8 @@ History:
 import sys
 import argparse
 import json
+import hashlib
+import os
 from typing import Optional
 
 from chat_ui import TerminalColors
@@ -22,11 +24,6 @@ def run_embedding(args: argparse.Namespace) -> None:
     base_url = build_base_url(args.host, args.port)
     insecure_flag = getattr(args, "insecure", False)
 
-    # verify_connection checks /v1/models by default, which is usually fine for these APIs
-    verify_connection(base_url, insecure=insecure_flag)
-
-    api_url = f"{base_url.rstrip('/')}/v1/embeddings"
-    
     input_text = args.input
     if input_text is None and not sys.stdin.isatty():
         input_text = sys.stdin.read().strip()
@@ -35,12 +32,38 @@ def run_embedding(args: argparse.Namespace) -> None:
         print(colors.wrap_error("[Error] No input text provided."))
         sys.exit(1)
 
-    if not args.quiet:
-        print(colors.colorize(f"--- Embedding: {api_url} ({args.model}) ---", colors.sys_color))
+    # Cache logic
+    cache_dir = "tmp"
+    cache_key = hashlib.sha256(f"{args.model}:{input_text}".encode("utf-8")).hexdigest()
+    cache_path = os.path.join(cache_dir, f"embed_{cache_key}.json")
 
-    response = call_embedding_api(
-        api_url, args.model, input_text, insecure=insecure_flag
-    )
+    response = None
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                response = json.load(f)
+            if not args.quiet:
+                print(colors.colorize(f"--- Cache Hit: {cache_path} ---", colors.sys_color))
+        except Exception:
+            response = None
+
+    if response is None:
+        # verify_connection checks /v1/models by default, which is usually fine for these APIs
+        verify_connection(base_url, insecure=insecure_flag)
+
+        api_url = f"{base_url.rstrip('/')}/v1/embeddings"
+        
+        if not args.quiet:
+            print(colors.colorize(f"--- Embedding: {api_url} ({args.model}) ---", colors.sys_color))
+
+        response = call_embedding_api(
+            api_url, args.model, input_text, insecure=insecure_flag
+        )
+
+        if "error" not in response:
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(response, f, ensure_ascii=False, indent=2)
 
     if "error" in response:
         print(colors.wrap_error(f"[Error] {response['error']}"))
