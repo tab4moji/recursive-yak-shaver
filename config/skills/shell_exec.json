@@ -24,6 +24,12 @@
       "recommended": "content=$(cat \"$path\")",
       "input_type": "Path",
       "output_type": "Content"
+    },
+    {
+      "task": "Get current time",
+      "recommended": "now=$(date '+%Y-%m-%d %H:%M:%S')",
+      "output_type": "DateTime",
+      "binding": "now"
     }
   ]
 }

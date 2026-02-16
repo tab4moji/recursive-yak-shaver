@@ -89,6 +89,17 @@ check_stop() {
     fi
 }
 
+# Calculate Configuration Hash (Skills & Cheatsheets)
+# Normalizes JSON to ignore formatting differences.
+CONFIG_HASH=$(python3 -c '
+import json, glob, os, hashlib
+def get_norm(path):
+    with open(path, "r") as f: return json.dumps(json.load(f), sort_keys=True, separators=(",", ":"))
+files = ["config/skills.json"] + sorted(glob.glob("config/skills/*.json"))
+contents = "".join(get_norm(f) for f in files if os.path.exists(f))
+print(hashlib.md5(contents.encode()).hexdigest()[:8])
+')
+
 # --- Execution ---
 
 # Phase 1: Translation (Input: PROMPT)
@@ -105,8 +116,8 @@ else
 fi
 check_stop 1
 
-# Phase 2: Dispatch (Input: P1_JSON)
-P2_HASH=$(md5sum < "${P1_JSON}" | cut -c1-8)
+# Phase 2: Dispatch (Input: P1_JSON + CONFIG)
+P2_HASH=$( (md5sum < "${P1_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
 P2_JSON="./tmp/.cache.p2.${P2_HASH}.json"
 export RYS_UUID="${P2_HASH}"
 
@@ -119,8 +130,8 @@ else
 fi
 check_stop 2
 
-# Phase 3: Grouping (Input: P2_JSON)
-P3_HASH=$(md5sum < "${P2_JSON}" | cut -c1-8)
+# Phase 3: Grouping (Input: P2_JSON + CONFIG)
+P3_HASH=$( (md5sum < "${P2_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
 P3_JSON="./tmp/.cache.p3.${P3_HASH}.json"
 export RYS_UUID="${P3_HASH}"
 
@@ -133,8 +144,8 @@ else
 fi
 check_stop 3
 
-# Phase 4: Request Processing (Input: P3_JSON)
-P4_HASH=$(md5sum < "${P3_JSON}" | cut -c1-8)
+# Phase 4: Request Processing (Input: P3_JSON + CONFIG)
+P4_HASH=$( (md5sum < "${P3_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
 P4_JSON="./tmp/.cache.p4.${P4_HASH}.json"
 export RYS_UUID="${P4_HASH}"
 
@@ -147,8 +158,8 @@ else
 fi
 check_stop 4
 
-# Phase 5: Script Generation (Input: P4_JSON)
-P5_HASH=$(md5sum < "${P4_JSON}" | cut -c1-8)
+# Phase 5: Script Generation (Input: P4_JSON + CONFIG)
+P5_HASH=$( (md5sum < "${P4_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
 P5_JSON="./tmp/.cache.p5.${P5_HASH}.json"
 export RYS_UUID="${P5_HASH}"
 

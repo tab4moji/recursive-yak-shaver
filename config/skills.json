@@ -15,6 +15,6 @@
     "id": "shell_exec",
     "type": "primitive",
     "description": "Experimental shell execution tools.",
-    "tools": ["find", "cat", "du", "sort", "head"]
+    "tools": ["find", "cat", "du", "sort", "head", "date"]
   }
 ]

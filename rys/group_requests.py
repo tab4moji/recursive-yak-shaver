@@ -73,6 +73,13 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
             skill = line.split("| SKILLS: ")[-1].strip()
         elif "| IDONTKNOW: " in line:
             skill = "IDONTKNOW"
+        elif " | " in line:
+            # Fallback: check if the last part looks like a skill (not containing common sentences)
+            last_part = line.split(" | ")[-1].strip()
+            if ":" in last_part:
+                potential_skill = last_part.split(":")[0].strip()
+                if potential_skill in ["shell_exec", "python_math", "python_script", "web_access"]:
+                    skill = potential_skill
             
         t_data = {"id": topic_id, "title": title, "raw": line, "skill": skill}
         all_topics.append(t_data)

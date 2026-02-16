@@ -5,11 +5,11 @@
   "patterns": [
     {
       "task": "Fetch weather for a city (wttr.in)",
-      "recommended": "curl -s "wttr.in/Tokyo?0q""
+      "recommended": "curl -s \"wttr.in/Tokyo?0q\""
     },
     {
       "task": "Search for local info (example)",
-      "recommended": "curl -s "https://api.duckduckgo.com/?q=cake+shop+nearby&format=json""
+      "recommended": "curl -s \"https://api.duckduckgo.com/?q=cake+shop+nearby&format=json\""
     }
   ]
 }
