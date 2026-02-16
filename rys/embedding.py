@@ -13,29 +13,48 @@ import argparse
 import json
 import hashlib
 import os
-from typing import Optional
+import math
+from typing import Optional, List
+
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
 
 from chat_ui import TerminalColors
 from chat_api import verify_connection, call_embedding_api, build_base_url
 
-def run_embedding(args: argparse.Namespace) -> None:
-    """Initializes and runs the embedding request."""
-    colors = TerminalColors(enable_color=not args.no_color)
-    base_url = build_base_url(args.host, args.port)
-    insecure_flag = getattr(args, "insecure", False)
-
-    input_text = args.input
-    if input_text is None and not sys.stdin.isatty():
-        input_text = sys.stdin.read().strip()
+def cosine_similarity(v1: List[float], v2: List[float]) -> float:
+    """Calculates cosine similarity between two vectors."""
+    if not v1 or not v2 or len(v1) != len(v2):
+        return 0.0
     
-    if not input_text:
-        print(colors.wrap_error("[Error] No input text provided."))
-        sys.exit(1)
+    if HAS_NUMPY:
+        a = np.array(v1)
+        b = np.array(v2)
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
-    # Cache logic
+    # Fallback to pure Python
+    dot_product = sum(a * b for a, b in zip(v1, v2))
+    mag1 = math.sqrt(sum(a * a for a in v1))
+    mag2 = math.sqrt(sum(a * a for a in v2))
+    if mag1 == 0 or mag2 == 0:
+        return 0.0
+    return dot_product / (mag1 * mag2)
+
+def get_embedding(
+    text: str,
+    model: str,
+    base_url: str,
+    colors: TerminalColors,
+    args: argparse.Namespace
+) -> List[float]:
+    """Gets embedding for a single text, using cache if available."""
     cache_dir = "tmp"
-    cache_key = hashlib.sha256(f"{args.model}:{input_text}".encode("utf-8")).hexdigest()
+    cache_key = hashlib.sha256(f"{model}:{text}".encode("utf-8")).hexdigest()
     cache_path = os.path.join(cache_dir, f"embed_{cache_key}.json")
+    insecure_flag = getattr(args, "insecure", False)
 
     response = None
     if os.path.exists(cache_path):
@@ -48,37 +67,63 @@ def run_embedding(args: argparse.Namespace) -> None:
             response = None
 
     if response is None:
-        # verify_connection checks /v1/models by default, which is usually fine for these APIs
         verify_connection(base_url, insecure=insecure_flag)
-
         api_url = f"{base_url.rstrip('/')}/v1/embeddings"
-        
         if not args.quiet:
-            print(colors.colorize(f"--- Embedding: {api_url} ({args.model}) ---", colors.sys_color))
-
-        response = call_embedding_api(
-            api_url, args.model, input_text, insecure=insecure_flag
-        )
-
+            print(colors.colorize(f"--- Embedding: {api_url} ({model}) ---", colors.sys_color))
+        
+        response = call_embedding_api(api_url, model, text, insecure=insecure_flag)
         if "error" not in response:
             os.makedirs(cache_dir, exist_ok=True)
             with open(cache_path, "w", encoding="utf-8") as f:
                 json.dump(response, f, ensure_ascii=False, indent=2)
-
+    
     if "error" in response:
         print(colors.wrap_error(f"[Error] {response['error']}"))
         sys.exit(1)
+    
+    if "data" in response and response["data"]:
+        return response["data"][0].get("embedding", [])
+    
+    print(colors.wrap_error(f"[Error] Unexpected response format: {response}"))
+    sys.exit(1)
 
-    if args.raw:
-        print(json.dumps(response, indent=2, ensure_ascii=False))
-    else:
-        # Default behavior: print the embedding vector (first one)
-        if "data" in response and response["data"]:
-            embedding = response["data"][0].get("embedding", [])
-            print(json.dumps(embedding))
+def run_embedding(args: argparse.Namespace) -> None:
+    """Initializes and runs the embedding request."""
+    colors = TerminalColors(enable_color=not args.no_color)
+    base_url = build_base_url(args.host, args.port)
+
+    # Handle multiple inputs for diff mode
+    inputs = args.inputs
+    if not inputs and not sys.stdin.isatty():
+        inputs = [sys.stdin.read().strip()]
+    
+    if not inputs:
+        print(colors.wrap_error("[Error] No input text provided."))
+        sys.exit(1)
+
+    if len(inputs) == 3 and inputs[0] == "diff":
+        # Diff mode: ./embedding.py diff "text1" "text2"
+        v1 = get_embedding(inputs[1], args.model, base_url, colors, args)
+        v2 = get_embedding(inputs[2], args.model, base_url, colors, args)
+        similarity = cosine_similarity(v1, v2)
+        if args.raw:
+            print(json.dumps({"similarity": similarity, "distance": 1.0 - similarity}))
         else:
-            print(colors.wrap_error(f"[Error] Unexpected response format: {response}"))
-            sys.exit(1)
+            print(f"Cosine Similarity: {similarity:.4f}")
+            print(f"Cosine Distance:   {1.0 - similarity:.4f}")
+    elif len(inputs) == 2:
+        # Implicit diff mode: ./embedding.py "text1" "text2"
+        v1 = get_embedding(inputs[0], args.model, base_url, colors, args)
+        v2 = get_embedding(inputs[1], args.model, base_url, colors, args)
+        similarity = cosine_similarity(v1, v2)
+        print(f"Cosine Similarity: {similarity:.4f}")
+    else:
+        # Single mode
+        text = inputs[0]
+        embedding = get_embedding(text, args.model, base_url, colors, args)
+        # Output the vector
+        print(json.dumps(embedding))
 
     return None
 
@@ -87,7 +132,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Embedding Client v0.1 - OpenAI Compatible"
     )
-    parser.add_argument("input", nargs="?", help="Input text to embed")
+    parser.add_argument("inputs", nargs="*", help="Input text(s) to embed or 'diff text1 text2'")
     parser.add_argument("--host", default="localhost", help="Target Host IP")
     parser.add_argument("--port", "-p", help="Target Port")
     parser.add_argument("--model", "-m", default="nomic-embed-text", help="Model name")
