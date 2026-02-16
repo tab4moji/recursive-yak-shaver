@@ -74,33 +74,42 @@ def main():
     for req in grouped_requests:
         print(f"--- Handling {req['id']} ({req['skill']}) ---")
         
-        # Phase 4-A: LLM Analysis
-        print(f"Phase4-A: Analyzing structure...")
-        analysis_data = run_analyzer_llm(req, topic_map, args.host, args.port, args.model)
-        analyzed_topics = analysis_data.get("topics", [])
-        
-        # Phase 4-B: Information Integration
-        print(f"Phase4-B: Integrating raw topic data...")
-        integrated_topics = []
-        for a_topic in analyzed_topics:
-            tid = a_topic.get("id")
-            raw_info = topic_map.get(tid, {})
-            
-            # Merge: Analysis + Raw Data
-            full_topic = {
-                "id": tid,
-                "title": raw_info.get("title", "Unknown"),
-                "raw": raw_info.get("raw", ""),
-                "input": a_topic.get("input"),
-                "output": a_topic.get("output")
+        if req['skill'] == "IDONTKNOW":
+            print(f"Skipping analysis for IDONTKNOW skill.")
+            structured_req = {
+                "request_id": req["id"],
+                "skill": req["skill"],
+                "topics": []
             }
-            integrated_topics.append(full_topic)
+        else:
+            # Phase 4-A: LLM Analysis
+            print(f"Phase4-A: Analyzing structure...")
+            analysis_data = run_analyzer_llm(req, topic_map, args.host, args.port, args.model)
+            analyzed_topics = analysis_data.get("topics", [])
+            
+            # Phase 4-B: Information Integration
+            print(f"Phase4-B: Integrating raw topic data...")
+            integrated_topics = []
+            for a_topic in analyzed_topics:
+                tid = a_topic.get("id")
+                raw_info = topic_map.get(tid, {})
+                
+                # Merge: Analysis + Raw Data
+                full_topic = {
+                    "id": tid,
+                    "title": raw_info.get("title", "Unknown"),
+                    "raw": raw_info.get("raw", ""),
+                    "input": a_topic.get("input"),
+                    "output": a_topic.get("output")
+                }
+                integrated_topics.append(full_topic)
+            
+            structured_req = {
+                "request_id": req["id"],
+                "skill": req["skill"],
+                "topics": integrated_topics
+            }
         
-        structured_req = {
-            "request_id": req["id"],
-            "skill": req["skill"],
-            "topics": integrated_topics
-        }
         final_integrated_requests.append(structured_req)
         
         # Display the final complete information package
