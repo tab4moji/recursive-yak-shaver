@@ -164,7 +164,8 @@ def load_skill_detail(config_dir: str, skill_id: str) -> str:
                         "description": p['task'],
                         "input_type": in_type,
                         "input_default": in_def,
-                        "output_type": p.get('output_type', 'Any')
+                        "output_type": p.get('output_type', 'Any'),
+                        "recommended": p.get('recommended', '')
                     })
 
             toon_data = {
