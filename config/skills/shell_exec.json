@@ -4,36 +4,26 @@
   "description": "Standard tools for file processing.",
   "patterns": [
     {
-      "task": "Enumerate files",
-      "recommended": "find . -type f",
-      "output_type": "List"
+      "task": "Find largest file path",
+      "recommended": "path=$(find . -type f -name \"*.py\" -exec du -b {} + | sort -rn | head -n 1 | cut -f2-)",
+      "output_type": "Path"
     },
     {
-      "task": "Enumerate files has the extention",
-      "recommended": "find . -type f -name *.py",
-      "output_type": "List"
+      "task": "Find smallest file path",
+      "recommended": "path=$(find . -type f -exec du -b {} + | sort -n | head -n 1 | cut -f2-)",
+      "output_type": "Path"
     },
     {
-      "task": "Sort numerically (Smallest top)",
-      "recommended": "sort -n",
-      "output_type": "List"
+      "task": "Run pylint",
+      "recommended": "content=$(pylint \"$path\")",
+      "input_type": "Path",
+      "output_type": "Content"
     },
     {
       "task": "Display content",
-      "recommended": "cat \"$1\"",
+      "recommended": "content=$(cat \"$path\")",
       "input_type": "Path",
-      "output_type": "List"
-    },
-    {
-      "task": "Calculate size",
-      "recommended": "du -b \"$1\"",
-      "input_type": "Path",
-      "output_type": "Single"
-    },
-    {
-      "task": "Select first item",
-      "recommended": "head -n 1",
-      "output_type": "Single"
+      "output_type": "Content"
     }
   ]
 }

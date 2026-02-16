@@ -10,6 +10,10 @@
     {
       "task": "Multi-line script logic",
       "recommended": "result=$(python3 << 'EOF'\nimport sys\nfor line in sys.stdin:\n    # ... complex logic ...\n    print(line.strip())\nEOF\n)"
+    },
+    {
+      "task": "Run static analysis",
+      "recommended": "result=$(pylint \"$1\")"
     }
   ]
 }

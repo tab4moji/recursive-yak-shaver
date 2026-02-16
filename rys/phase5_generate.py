@@ -40,7 +40,7 @@ def call_coder(topic, skill, host, port, model):
         "output": clean_output
     })
     
-    prompt = f"### TASK\n{topic['raw']}\n\n"
+    prompt = f"### TASK\n{topic['title']}\n\n"
     prompt += f"### ANALYSIS\n{analysis_toon}\n"
     
     cmd = [
