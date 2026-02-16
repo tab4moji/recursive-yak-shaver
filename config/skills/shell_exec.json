@@ -30,6 +30,12 @@
       "recommended": "now=$(date '+%Y-%m-%d %H:%M:%S')",
       "output_type": "DateTime",
       "binding": "now"
+    },
+    {
+      "task": "Get current directory path",
+      "recommended": "current_path=$(pwd)",
+      "output_type": "Path",
+      "binding": "current_path"
     }
   ]
 }
