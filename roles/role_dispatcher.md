@@ -9,8 +9,10 @@ Decompose the user's request into atomic tasks. If a task involves searching for
    - Line 1: The search step (e.g., "Find the smallest file.").
    - Line 2: The action step (e.g., "Display the contents of the smallest file.").
 3. **Headline Titles**: The `TOPIC` should be a concise, professional headline (2-4 words).
-4. **Specific Restrictions**: 
-   - Weather: `IDONTKNOW: I do not have a way to retrieve weather information.`
+4. **Specific Skills**:
+   - Time/Date: Always use `SKILLS: shell_exec` for requests about the current time or date.
+5. **Specific Restrictions**: 
+   - Weather: `IDONTKNOW: I do not have a way to retrieve weather information.` (Do NOT confuse this with current time).
    - Shops: `IDONTKNOW: I do not have a way to search for physical shops.`
 
 ### Examples
