@@ -40,8 +40,33 @@ def call_coder(topic, skill, host, port, model):
         "output": clean_output
     })
     
-    prompt = f"### TASK\n{topic['title']}\n\n"
+    # Inject affirmative hint into the task description
+    task_title = topic['title']
+    prompt_suffix = ""
+    
+    # Extract the actual value string for checking
+    input_val = ""
+    if isinstance(clean_input, str):
+        input_val = clean_input
+    elif isinstance(clean_input, dict) and "value" in clean_input:
+        input_val = clean_input["value"]
+
+    if isinstance(input_val, str) and input_val.startswith('$'):
+        task_title = f"Perform action on {input_val} for: {task_title}"
+        prompt_suffix = f"\n### TIP\nUse the variable {input_val} directly to complete this action in a single command.\n"
+    elif isinstance(clean_input, dict) and "value" in clean_input:
+        val = clean_input["value"]
+        if isinstance(val, dict):
+            # Map input case (e.g., min/max)
+            val_str = ", ".join([f"{k}={v}" for k, v in val.items()])
+            if "min" in val and "max" in val:
+                prompt_suffix = f"\n### INSTRUCTION\nUse range({val['min']}, {val['max']}+1) for this task.\n"
+            else:
+                prompt_suffix = f"\n### TIP\nEmbed these literal values directly: {val_str}\n"
+
+    prompt = f"### TASK\n{task_title}\n\n"
     prompt += f"### ANALYSIS\n{analysis_toon}\n"
+    prompt += prompt_suffix
     
     cmd = [
         "python3", os.path.join(SCRIPT_DIR, "invoke_role.py"),
