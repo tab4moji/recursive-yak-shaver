@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Phase 5: Execution Loop (v2.0)
+Phase 5: Execution Loop (v2.1)
 Iterates through generated scripts and asks for execution.
-Renamed from Phase 6 to Phase 5.
+1. 2026-02-17: Fixed pylint warnings and improved code style.
 """
 
-import sys
 import os
 import argparse
 import json
@@ -14,6 +13,7 @@ import subprocess
 from chat_ui import TerminalColors
 
 def main():
+    """Main execution loop for Phase 5."""
     colors = TerminalColors(enable_color=True)
     parser = argparse.ArgumentParser()
     parser.add_argument("--in-json", required=True)
@@ -35,7 +35,7 @@ def main():
     for script in scripts:
         target_file = script["path"]
         req_title = script["title"]
-        
+
         if not os.path.exists(target_file):
             continue
 
@@ -45,13 +45,14 @@ def main():
         print("---------------------------------------------------")
 
         interpreter = "bash" if target_file.endswith(".sh") else "python3"
-        
+
         try:
             with open(target_file, 'r', encoding='utf-8') as f:
                 content = f.read()
                 print(content)
                 if len(content.strip().splitlines()) <= 2 and "#!" in content:
-                    print(f"{colors.err_color}[WARNING] This script looks incomplete (too short).{colors.reset_code}")
+                    warn_msg = "[WARNING] This script looks incomplete (too short)."
+                    print(f"{colors.err_color}{warn_msg}{colors.reset_code}")
         except OSError:
             print("  (Could not read file)")
 
