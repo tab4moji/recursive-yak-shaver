@@ -40,7 +40,10 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: s
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
         output_lines = []
-        print("\nOutput from LLM:")
+        print("\nRaw LLM Output:")
+        print(f"---START---\n{result.stdout.strip()}\n---END---")
+        
+        print("\nParsed Grouping:")
         for line in result.stdout.strip().split('\n'):
             line = line.strip()
             if line.startswith("REQUEST:"):
@@ -110,6 +113,10 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
             raw_requests.append({"skill": skill, "topic_ids": [topics[0]["id"]]})
         else:
             llm_results = run_grouper_llm(skill, topics, host, port, model)
+            if not llm_results:
+                print(f"  Warning: No valid REQUEST lines found for {skill}. Falling back to individual topics.")
+                llm_results = [f"REQUEST: {t['id']}" for t in topics]
+                
             for req_str in llm_results:
                 ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
                 if ids:
