@@ -7,7 +7,7 @@ For every task that requires an action on a file (display, pylint, delete, etc.)
    - Title: "Find [target] path"
    - Output: binding "path"
 2. **Action Milestone**: Perform the operation on the path found in step 1.
-   - Title: "Perform [action] on the path"
+   - Title: "Run [command] on the path at ref:TOPIC[N].path"
    - Input: ref:TOPIC[N].path
    - Output: binding "content"
 
@@ -19,6 +19,6 @@ Every milestone must perform exactly ONE shell command. Never combine "find" and
 ...
 [Logical Roadmap]
 - Milestone 1: Find largest python file path.
-- Milestone 2: Run pylint on the path.
+- Milestone 2: Run pylint on the path at ref:TOPIC1.path.
 - Milestone 3: Find smallest file path.
-- Milestone 4: Display the content of the smallest file.
+- Milestone 4: Use cat to read the content of the file at ref:TOPIC3.path.
