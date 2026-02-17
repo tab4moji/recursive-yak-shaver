@@ -13,6 +13,7 @@ PROMPT=""
 export RYS_AUTO="false"
 STOP_PHASE=6
 REQ_FILTER=""
+export RYS_SIMILARITY="0.0"
 
 # Simple Argument Parsing
 for arg in "$@"; do
@@ -22,6 +23,10 @@ for arg in "$@"; do
         export RYS_AUTO="true"
     elif [[ $arg == --request=* ]]; then
         REQ_FILTER="${arg#--request=}"
+    elif [[ $arg == --similarity=* ]]; then
+        export RYS_SIMILARITY="${arg#--similarity=}"
+    elif [[ $arg == -s* ]]; then
+        export RYS_SIMILARITY="${arg#-s}"
     elif [[ -z "$PROMPT" ]]; then
         PROMPT="$arg"
     fi
@@ -123,7 +128,7 @@ export RYS_UUID="${P2_HASH}"
 
 if run_check 2 "${P2_JSON}"; then
     echo -e "\n>>> 2. Dispatch Phase"
-    python3 ./rys/phase2_dispatch.py --in-json "${P1_JSON}" --out-json "${P2_JSON}" ${common_args}
+    python3 ./rys/phase2_dispatch.py --in-json "${P1_JSON}" --out-json "${P2_JSON}" ${common_args} --similarity "${RYS_SIMILARITY}"
 else
     echo -e "\n>>> 2. Dispatch Phase (Cached)"
     python3 -c "import json; d=json.load(open('${P2_JSON}')); print(d.get('content', d.get('dispatch_out', '')))"
