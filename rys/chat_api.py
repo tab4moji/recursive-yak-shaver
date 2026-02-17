@@ -169,11 +169,14 @@ def call_embedding_api(
     url: str,
     model: str,
     input_text: str,
-    insecure: bool = False
+    insecure: bool = False,
+    dimensions: Optional[int] = None
 ) -> Dict[str, Any]:
     """Calls the embedding API and returns the response."""
     headers = {"Content-Type": "application/json", "Authorization": "Bearer not-needed"}
     payload = {"model": model, "input": input_text}
+    if dimensions:
+        payload["dimensions"] = dimensions
     ctx = get_ssl_context(insecure)
 
     try:

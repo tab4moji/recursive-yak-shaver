@@ -50,40 +50,85 @@ def get_embedding(
     colors: TerminalColors,
     args: argparse.Namespace
 ) -> List[float]:
-    """Gets embedding for a single text, using cache if available."""
+    """Gets embedding for a single text, using cache if available and sufficient."""
     cache_dir = "tmp"
+    # Unified cache key (no dims in key)
     cache_key = hashlib.sha256(f"{model}:{text}".encode("utf-8")).hexdigest()
     cache_path = os.path.join(cache_dir, f"embed_{cache_key}.json")
     insecure_flag = getattr(args, "insecure", False)
 
-    response = None
+    cache_data = None
     if os.path.exists(cache_path):
         try:
             with open(cache_path, "r", encoding="utf-8") as f:
-                response = json.load(f)
-            if not args.quiet:
-                print(colors.colorize(f"--- Cache Hit: {cache_path} ---", colors.sys_color))
-        except Exception:
-            response = None
+                cache_data = json.load(f)
+            
+            # Extract vector and original request info
+            # Handle both old format (direct response) and new format (with metadata)
+            if "response" in cache_data:
+                response = cache_data["response"]
+                cached_requested_dims = cache_data.get("requested_dims")
+            else:
+                response = cache_data
+                cached_requested_dims = None # Assume old caches are 'full' or unknown
 
-    if response is None:
-        verify_connection(base_url, insecure=insecure_flag)
-        api_url = f"{base_url.rstrip('/')}/v1/embeddings"
-        if not args.quiet:
-            print(colors.colorize(f"--- Embedding: {api_url} ({model}) ---", colors.sys_color))
-        
-        response = call_embedding_api(api_url, model, text, insecure=insecure_flag)
-        if "error" not in response:
-            os.makedirs(cache_dir, exist_ok=True)
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(response, f, ensure_ascii=False, indent=2)
+            vec = response.get("data", [{}])[0].get("embedding", [])
+            
+            # Check if cache is sufficient
+            is_sufficient = False
+            if args.dims is None:
+                # User wants full vector. Only use cache if it was also full.
+                if cached_requested_dims is None:
+                    is_sufficient = True
+            else:
+                # User wants N dims. Use cache if it has at least N.
+                if len(vec) >= args.dims:
+                    is_sufficient = True
+
+            if is_sufficient:
+                if not args.quiet:
+                    msg = f"--- Cache Hit (Reuse): {cache_path} (len={len(vec)}) ---"
+                    print(colors.colorize(msg, colors.sys_color))
+                if args.dims and len(vec) > args.dims:
+                    vec = vec[:args.dims]
+                return vec
+            else:
+                if not args.quiet:
+                    print(colors.colorize(f"--- Cache Insufficient (len={len(vec)} < {args.dims or 'full'}). Fetching... ---", colors.sys_color))
+        except Exception:
+            cache_data = None
+
+    # Fetch from API
+    verify_connection(base_url, insecure=insecure_flag)
+    api_url = f"{base_url.rstrip('/')}/v1/embeddings"
+    if not args.quiet:
+        print(colors.colorize(f"--- Embedding: {api_url} ({model}, dims={args.dims or 'full'}) ---", colors.sys_color))
+    
+    response = call_embedding_api(
+        api_url, model, text, 
+        insecure=insecure_flag, 
+        dimensions=args.dims
+    )
     
     if "error" in response:
         print(colors.wrap_error(f"[Error] {response['error']}"))
         sys.exit(1)
     
     if "data" in response and response["data"]:
-        return response["data"][0].get("embedding", [])
+        vec = response["data"][0].get("embedding", [])
+        
+        # Save with metadata
+        os.makedirs(cache_dir, exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "response": response,
+                "requested_dims": args.dims
+            }, f, ensure_ascii=False, indent=2)
+            
+        # Ensure client-side truncation even if server didn't handle it
+        if args.dims and len(vec) > args.dims:
+            vec = vec[:args.dims]
+        return vec
     
     print(colors.wrap_error(f"[Error] Unexpected response format: {response}"))
     sys.exit(1)
@@ -134,6 +179,7 @@ def main() -> None:
     parser.add_argument("inputs", nargs="*", help="Input text(s) to embed or 'diff text1 text2'")
     parser.add_argument("--host", default="localhost", help="Target Host IP")
     parser.add_argument("--port", "-p", help="Target Port")
+    parser.add_argument("--dims", type=int, help="Output dimensions (truncation)")
     parser.add_argument("--model", "-m", default="nomic-embed-text", help="Model name")
     parser.add_argument("--quiet", "-q", action="store_true", help="Quiet mode")
     parser.add_argument("--raw", action="store_true", help="Output raw JSON response")
