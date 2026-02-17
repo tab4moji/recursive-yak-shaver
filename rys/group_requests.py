@@ -15,6 +15,31 @@ import re
 import subprocess
 from typing import List, Dict, Any
 
+def parse_input(dispatch_text: str) -> Dict[str, List[str]]:
+    """
+    Parses dispatch output and groups topics by skill.
+    Returns: Dict[skill, List[topic_description]]
+    """
+    lines = [line.strip() for line in dispatch_text.strip().split('\n') if line.strip()]
+    groups = {}
+
+    for line in lines:
+        skill = "UNKNOWN"
+        topic = line
+
+        if "| SKILLS: " in line:
+            parts = line.split("| SKILLS: ")
+            skill = parts[-1].strip()
+            topic = parts[0].replace("TOPIC:", "").strip()
+        elif "| IDONTKNOW: " in line:
+            parts = line.split("| IDONTKNOW: ")
+            skill = "IDONTKNOW"
+            topic = parts[0].replace("TOPIC:", "").strip()
+
+        groups.setdefault(skill, []).append(topic)
+    return groups
+
+
 def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: str, model: str) -> List[str]:
     """Step 3 (Gemma-3N): Intelligent grouping."""
     print("Phase3-Step3(gemma-3n):")

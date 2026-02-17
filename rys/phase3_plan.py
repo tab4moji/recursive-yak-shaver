@@ -24,13 +24,16 @@ if SCRIPT_DIR not in sys.path:
 
 def parse_toon(raw_response: str):
     """Parses and cleans TOON (YAML) output from LLM."""
-    clean_response = raw_response.replace("```TOON", "").replace("```yaml", "").replace("```", "").strip()
+    clean_response = raw_response.replace("```TOON", "").replace("```yaml", "").replace(
+        "```", "").strip()
     try:
         return yaml.safe_load(clean_response)
-    except Exception:
+    except (yaml.YAMLError, AttributeError, TypeError):
         return None
 
-def cached_call(role: str, prompt: str, cache_path: str, config, colors, 
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def cached_call(role: str, prompt: str, cache_path: str, config, colors,
                 skills=None, include_skills=False, risks=None) -> str:
     """Wrapper for role calls with local caching."""
     if os.path.exists(cache_path):
@@ -39,70 +42,113 @@ def cached_call(role: str, prompt: str, cache_path: str, config, colors,
             print(f"  [SKIP] Using cached {role} result: {cache_path}")
             return cached_data["content"]
 
-    content = call_role(SCRIPT_DIR, role, prompt, config, colors, 
+    content = call_role(SCRIPT_DIR, role, prompt, config, colors,
                         skills=skills, include_skills=include_skills, risks=risks)
-    
+
     with open(cache_path, "w", encoding="utf-8") as f_out:
         json.dump({"role": role, "content": content}, f_out, ensure_ascii=False, indent=2)
     return content
 
-def plan_job(job, data, config, colors, tmp_dir, prompt_hash):
+def _extract_op_from_toon(toon_data):
+    """Refines operation from TOON data."""
+    op = toon_data.get("operation", "Execute task")
+    val = toon_data.get("input", {}).get("value", "")
+    out_type = toon_data.get("output", {}).get("type", "")
+
+    # Refine operation if it lacks display/show intent but output type suggests it
+    display_keywords = ["display", "show", "print", "read", "content"]
+    if out_type in ["display_content", "file_content"] and \
+       not any(k in op.lower() for k in display_keywords):
+        op = f"{op} and show the content of the file"
+
+    # Convert back to a Milestone format that Phase 4 understands
+    refined_out = f"Milestone 1: {op}"
+    if val:
+        refined_out += f" (Input: {val})"
+    return refined_out
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def plan_job(job, config, colors, tmp_dir, prompt_hash):
     """Processes a single task through the Planner role."""
-    req_idx, current_skill, topic, req_title = job["req_idx"], job["skill"], job["topic"], job["title"]
-    t_hash = hashlib.md5(topic.encode()).hexdigest()[:8]
-    topic_hash = f"{prompt_hash}.req_{req_idx}_{t_hash}"
-    
-    print(f"\nPlanning {req_title}")
-    
+    t_hash = hashlib.md5(job["topic"].encode()).hexdigest()[:8]
+    topic_hash = f"{prompt_hash}.req_{job['req_idx']}_{t_hash}"
+
+    print(f"\nPlanning {job['title']}")
+
     # Using the suggested format: TOPIC: ... | SKILLS: ...
-    goal_prompt = f"TOPIC: {topic} | SKILLS: {current_skill}"
+    goal_prompt = f"TOPIC: {job['topic']} | SKILLS: {job['skill']}"
 
     # Use p3.planner as the role and update cache naming
     e_cache = f"{tmp_dir}/.rys.{topic_hash}.p3.planner.json"
     raw_out = cached_call(
-        "planner", goal_prompt, e_cache, config, colors, 
-        skills=[current_skill], include_skills=True, risks="./config/risks.json"
+        "planner", goal_prompt, e_cache, config, colors,
+        skills=[job["skill"]], include_skills=True, risks="./config/risks.json"
     )
-    
+
     # Parse TOON/YAML
     toon_data = parse_toon(raw_out)
     if toon_data and isinstance(toon_data, dict):
-        op = toon_data.get("operation", "Execute task")
-        val = toon_data.get("input", {}).get("value", "")
-        out_type = toon_data.get("output", {}).get("type", "")
-
-        # Refine operation if it lacks the display/show intent but output type suggests it
-        display_keywords = ["display", "show", "print", "read", "content"]
-        if out_type in ["display_content", "file_content"] and not any(k in op.lower() for k in display_keywords):
-            op = f"{op} and show the content of the file"
-
-        # Convert back to a Milestone format that Phase 4 understands
-        refined_out = f"Milestone 1: {op}"
-        if val:
-            refined_out += f" (Input: {val})"
+        refined_out = _extract_op_from_toon(toon_data)
     else:
-        # Fallback if parsing fails
         refined_out = raw_out
-    
+
     # Print raw output (YAML) then compact Roadmap
     print(raw_out)
-    plan_display = refined_out.replace("\n", " ")
-    print(f"Topic: {topic} [Strategic Roadmap] {plan_display}")
+    print(f"Topic: {job['topic']} [Strategic Roadmap] {refined_out.replace('\n', ' ')}")
 
     if not refined_out.strip():
         print("Plan generation failed. Skipping.")
         return None
 
     return {
-        "req_idx": req_idx, 
-        "skill": current_skill, 
-        "title": req_title, 
-        "topic": topic, 
+        "req_idx": job["req_idx"],
+        "skill": job["skill"],
+        "title": job["title"],
+        "topic": job["topic"],
         "refined_out": refined_out,
         "content": raw_out
     }
 
+def _build_visual_input(groups):
+    """Builds visual input string for the titler."""
+    visual_input = ""
+    req_index = 1
+    for key, descriptions in groups.items():
+        status = f"[Skill: {key}]"
+        if key.startswith("IDONTKNOW__"):
+            reason = key.split("__", 2)[2]
+            status = f"[Status: Unable to Process ({reason})]"
+        visual_input += f"REQUEST {req_index} {status}:\n"
+        for desc in descriptions:
+            visual_input += f"- TOPIC: {desc}\n"
+        visual_input += "\n"
+        req_index += 1
+    return visual_input
+
+
+def _build_exec_plan(groups, titles_out):
+    """Builds the execution plan list."""
+    titles_lines = titles_out.splitlines()
+    exec_plan = []
+    req_idx = 1
+    for key, descriptions in groups.items():
+        if not (key.startswith("IDONTKNOW__") or key == "UNKNOWN"):
+            for desc in descriptions:
+                # Find the specific title for this request
+                req_title = next(
+                    (l for l in titles_lines if l.startswith(f"REQUEST {req_idx}:")),
+                    f"REQUEST {req_idx}: [Skill: {key}]"
+                )
+                exec_plan.append({
+                    "req_idx": req_idx, "skill": key, "topic": desc, "title": req_title
+                })
+        req_idx += 1
+    return exec_plan
+
+
 def main():
+    """Main execution function for Strategic Planning."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--in-json", required=True)
     parser.add_argument("--host", default="localhost")
@@ -126,39 +172,22 @@ def main():
     groups = group_requests.parse_input(dispatch_out)
     data["groups"] = groups
 
-    # Generate Titles for Visualization (UX Restoration)
-    visual_input = ""
-    req_index = 1
-    for key, descriptions in groups.items():
-        status = f"[Skill: {key}]"
-        if key.startswith("IDONTKNOW__"):
-            reason = key.split("__", 2)[2]
-            status = f"[Status: Unable to Process ({reason})]"
-        visual_input += f"REQUEST {req_index} {status}:\n"
-        for desc in descriptions:
-            visual_input += f"- TOPIC: {desc}\n"
-        visual_input += "\n"
-        req_index += 1
+    visual_input = _build_visual_input(groups)
 
     base_url = build_base_url(args.host, args.port)
     verify_connection(base_url)
-    config = ChatConfig(api_url=f"{base_url.rstrip('/')}/v1/chat/completions", model=args.model, quiet_mode=True, stream_output=True, insecure=False, silent_mode=True)
+    config = ChatConfig(
+        api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
+        model=args.model, quiet_mode=True, stream_output=True,
+        insecure=False, silent_mode=True
+    )
     colors = TerminalColors(enable_color=True)
 
     print("\n>>> Generating Task Titles...")
     titles_out = call_role(SCRIPT_DIR, "titler", visual_input, config, colors)
     data["titles_out"] = titles_out
-    titles_lines = titles_out.splitlines()
 
-    exec_plan = []
-    req_idx = 1
-    for key, descriptions in groups.items():
-        if not (key.startswith("IDONTKNOW__") or key == "UNKNOWN"):
-            for desc in descriptions:
-                # Find the specific title for this request
-                req_title = next((l for l in titles_lines if l.startswith(f"REQUEST {req_idx}:")), f"REQUEST {req_idx}: [Skill: {key}]")
-                exec_plan.append({"req_idx": req_idx, "skill": key, "topic": desc, "title": req_title})
-        req_idx += 1
+    exec_plan = _build_exec_plan(groups, titles_out)
 
     if not exec_plan:
         print("No valid tasks to plan.")
@@ -171,7 +200,7 @@ def main():
     data["planned_topics"] = []
 
     for job in exec_plan:
-        res = plan_job(job, data, config, colors, tmp_dir, args.uuid)
+        res = plan_job(job, config, colors, tmp_dir, args.uuid)
         if res:
             data["planned_topics"].append(res)
 

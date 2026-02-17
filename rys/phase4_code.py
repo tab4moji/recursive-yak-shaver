@@ -21,147 +21,175 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.append(SCRIPT_DIR)
 
-def code_job(topic_data, config, colors, tmp_dir, uuid, prompt_hash):
+def _clean_snippet(raw_snippet):
+    """Cleans the raw snippet from LLM output."""
+    clean_lines = []
+    for line in raw_snippet.splitlines():
+        l_strip = line.strip()
+        if l_strip.startswith("```"):
+            continue
+        if re.search(r"#\s*(Processing|Output Type):", l_strip, re.IGNORECASE):
+            continue
+        clean_lines.append(line)
+
+    clean_snippet = "\n".join(clean_lines).strip()
+
+    if "|" in clean_snippet:
+        last_cmd = clean_snippet.rsplit("|", maxsplit=1)[-1].strip()
+        print(f"      [STRIP] Multiple segments detected. Keeping last: '{last_cmd}'")
+        clean_snippet = last_cmd
+
+    return clean_snippet
+
+def _extract_step_metadata(raw_snippet, clean_snippet):
+    """Extracts processing and output type from snippet."""
+    proc_match = re.search(r"# Processing:\s*(Per-Item|Whole)", raw_snippet, re.IGNORECASE)
+    processing = proc_match.group(1).capitalize() if proc_match else "Whole"
+
+    type_match = re.search(r"# Output Type:\s*(List|Single)", raw_snippet, re.IGNORECASE)
+    output_type = type_match.group(1).capitalize() if type_match else "Single"
+
+    # Auto-adjust processing for stream tools
+    stream_tools = ["sort", "head", "tail", "grep", "cut", "awk", "sed", "uniq"]
+    first_word = clean_snippet.split()[0] if clean_snippet else ""
+    if first_word in stream_tools:
+        if "$1" in clean_snippet:
+            clean_snippet = clean_snippet.replace(' "$1"', '').replace('"$1"', '').strip()
+        processing = "Whole"
+
+    if "$1" in clean_snippet and processing == "Whole" and first_word not in stream_tools:
+        processing = "Per-Item"
+
+    return processing, output_type, clean_snippet
+
+def _handle_step_cache(step_json, step_idx):
+    """Checks if step cache exists and is valid."""
+    if os.path.exists(step_json):
+        try:
+            with open(step_json, "r", encoding="utf-8") as f:
+                cached = json.load(f)
+                print(f"    - Step {step_idx+1}: [SKIP] Using cached step: {step_json}")
+                return cached
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"    - Step {step_idx+1}: Cache error ({e}), re-generating...")
+    return None
+
+def _process_single_step(step_idx, step_desc, meta_context, config, colors):
+    # pylint: disable=too-many-locals
+    """Processes a single step: cache or LLM call."""
+    t_hash = meta_context['topic_hash']
+    step_json = f"{meta_context['tmp_dir']}/.rys.{t_hash}.p4.step_{step_idx+1}.json"
+    cached = _handle_step_cache(step_json, step_idx)
+    if cached:
+        return cached
+
+    print(f"    - Step {step_idx+1}: {step_desc}")
+    input_hint = 'Standard Input' if step_idx == 0 else f'Output from Step {step_idx}'
+    snippet_out = call_role(
+        SCRIPT_DIR, "coder",
+        f"### Task\n{step_desc}\n\n### Context\n"
+        f"- Input: {input_hint}\n",
+        config, colors, skills=[meta_context["skill"]], include_skills=True,
+        risks="./config/risks.json"
+    )
+
+    match = re.search(r"```(?:\w+)?\s*\n?(.*?)\n?```", snippet_out, re.DOTALL)
+    raw_snippet = match.group(1).strip() if match else snippet_out.strip()
+    proc, o_type, clean = _extract_step_metadata(raw_snippet, _clean_snippet(raw_snippet))
+
+    res = {
+        "step": step_idx+1, "description": step_desc, "snippet": clean,
+        "output_type": o_type, "processing": proc, "content": snippet_out
+    }
+    with open(step_json, "w", encoding="utf-8") as f:
+        json.dump(res, f, ensure_ascii=False, indent=2)
+
+    print(f"      Processing: {proc}, Output Type: {o_type}")
+    return res
+
+def _generate_shell_content(steps_metadata):
+    """Generates the bash script content from steps metadata."""
+    sh_lines = ["#!/bin/bash", "set -e", ""]
+    step_blocks = []
+    for i, meta in enumerate(steps_metadata):
+        snippet = meta["snippet"].strip()
+        if not snippet:
+            continue
+        proc = meta["processing"].lower() if i > 0 else "whole"
+        if "$1" in snippet and proc != "per-item":
+            proc = "per-item"
+
+        block = ["{"]
+        if proc == "per-item":
+            block.append("  while read -r item; do")
+            block.append("    set -- \"$item\"")
+            for line in snippet.splitlines():
+                block.append(f"    {line}")
+            block.append("  done")
+        else:
+            for line in snippet.splitlines():
+                block.append(f"  {line}")
+        block.append("}")
+        step_blocks.append("\n".join(block))
+
+    sh_lines.append(" | \\\n".join(step_blocks))
+    return "\n".join(sh_lines)
+
+def code_job(topic_data, config, colors, tmp_dir, identifiers):
+    # pylint: disable=too-many-locals
     """Processes a single task through the Coder role for each milestone."""
+    uuid, prompt_hash = identifiers
     req_idx = topic_data["req_idx"]
-    current_skill = topic_data["skill"]
     req_title = topic_data["title"]
-    refined_out = topic_data["refined_out"]
     topic = topic_data.get("topic", "")
     t_hash = hashlib.md5(topic.encode()).hexdigest()[:8]
     topic_hash = f"{prompt_hash}.req_{req_idx}_{t_hash}"
 
     print(f"\nCoding {req_title}")
     print(f"Topic: {topic}")
-    print(f"  [Step-by-Step Coding]")
+    print("  [Step-by-Step Coding]")
 
+    steps = parse_steps(topic_data["refined_out"])
     steps_metadata = []
-    is_shell = True
-    steps = parse_steps(refined_out)
+    meta_ctx = {"tmp_dir": tmp_dir, "topic_hash": topic_hash, "skill": topic_data["skill"]}
 
     for i, step_desc in enumerate(steps):
-        step_json = f"{tmp_dir}/.rys.{topic_hash}.p4.step_{i+1}.json"
-        
-        if os.path.exists(step_json):
-            try:
-                with open(step_json, "r", encoding="utf-8") as f:
-                    cached_step = json.load(f)
-                    steps_metadata.append({
-                        "snippet": cached_step["snippet"],
-                        "output_type": cached_step["output_type"],
-                        "processing": cached_step["processing"],
-                        "description": cached_step["description"],
-                        "content": cached_step.get("content", "")
-                    })
-                    print(f"    - Step {i+1}/{len(steps)}: [SKIP] Using cached step: {step_json}")
-                    continue
-            except Exception as e:
-                print(f"    - Step {i+1}/{len(steps)}: Cache error ({e}), re-generating...")
+        res = _process_single_step(i, step_desc, meta_ctx, config, colors)
+        steps_metadata.append(res)
+        snippet_disp = res["snippet"].replace(chr(10), chr(10)+'      ')
+        print(f"      ```\n      {snippet_disp}\n      ```")
 
-        print(f"    - Step {i+1}/{len(steps)}: {step_desc}")
-
-        io_hint = "Standard Input" if i == 0 else f"Output from Step {i}"
-        step_prompt = (
-            f"### Task\n{step_desc}\n\n"
-            f"### Context\n"
-            f"- Input: {io_hint}\n"
-        )
-
-        snippet_out = call_role(SCRIPT_DIR, "coder", step_prompt, config, colors, 
-                                skills=[current_skill], include_skills=True, risks="./config/risks.json")
-
-        code_match = re.search(r"```(?:\w+)?\s*\n?(.*?)\n?```", snippet_out, re.DOTALL)
-        raw_snippet = code_match.group(1).strip() if code_match else snippet_out.strip()
-
-        clean_lines = []
-        for line in raw_snippet.splitlines():
-            l_strip = line.strip()
-            if l_strip.startswith("```"): continue
-            if re.search(r"#\s*(Processing|Output Type):", l_strip, re.IGNORECASE):
-                continue
-            clean_lines.append(line)
-        
-        clean_snippet = "\n".join(clean_lines).strip()
-
-        if "|" in clean_snippet:
-            last_cmd = clean_snippet.split("|")[-1].strip()
-            print(f"      [STRIP] Multiple segments detected. Keeping last: '{last_cmd}'")
-            clean_snippet = last_cmd
-
-        proc_match = re.search(r"# Processing:\s*(Per-Item|Whole)", raw_snippet, re.IGNORECASE)
-        processing = proc_match.group(1).capitalize() if proc_match else "Whole"
-
-        type_match = re.search(r"# Output Type:\s*(List|Single)", raw_snippet, re.IGNORECASE)
-        output_type = type_match.group(1).capitalize() if type_match else "Single"
-
-        stream_tools = ["sort", "head", "tail", "grep", "cut", "awk", "sed", "uniq"]
-        first_word = clean_snippet.split()[0] if clean_snippet else ""
-        if first_word in stream_tools:
-            if "$1" in clean_snippet:
-                clean_snippet = clean_snippet.replace(' "$1"', '').replace('"$1"', '').strip()
-            processing = "Whole"
-
-        if "$1" in clean_snippet and processing == "Whole":
-            if first_word not in stream_tools:
-                processing = "Per-Item"
-
-        with open(step_json, "w", encoding="utf-8") as f:
-            json.dump({
-                "step": i+1, 
-                "description": step_desc, 
-                "snippet": clean_snippet, 
-                "output_type": output_type, 
-                "processing": processing,
-                "content": snippet_out
-            }, f, ensure_ascii=False, indent=2)
-
-        print(f"      Processing: {processing}, Output Type: {output_type}")
-        print(f"      ```\n      {clean_snippet.replace(chr(10), chr(10)+'      ')}\n      ```")
-
-        steps_metadata.append({
-            "snippet": clean_snippet, 
-            "output_type": output_type, 
-            "processing": processing, 
-            "description": step_desc,
-            "content": snippet_out
-        })
-
-    if is_shell:
-        sh_lines = ["#!/bin/bash", "set -e", ""]
-        step_blocks = []
-        for i, meta in enumerate(steps_metadata):
-            snippet = meta["snippet"].strip()
-            if not snippet: continue
-            proc = meta["processing"].lower() if i > 0 else "whole"
-            if "$1" in snippet and proc != "per-item":
-                proc = "per-item"
-
-            block = ["{"]
-            if proc == "per-item":
-                block.append("  while read -r item; do")
-                block.append("    set -- \"$item\"")
-                for line in snippet.splitlines():
-                    block.append(f"    {line}")
-                block.append("  done")
-            else:
-                for line in snippet.splitlines():
-                    block.append(f"  {line}")
-            block.append("}")
-            step_blocks.append("\n".join(block))
-
-        sh_lines.append(" | \\\n".join(step_blocks))
-
-        path = f"{tmp_dir}/.rys.{uuid}.req_{req_idx}.sh"
-        with open(path, "w", encoding="utf-8") as fs:
-            fs.write("\n".join(sh_lines))
-    else:
-        path = f"{tmp_dir}/.rys.{uuid}.req_{req_idx}.py"
-        with open(path, "w", encoding="utf-8") as fs:
-            fs.write("# Python logic placeholder")
+    sh_content = _generate_shell_content(steps_metadata)
+    path = f"{tmp_dir}/.rys.{uuid}.req_{req_idx}.sh"
+    with open(path, "w", encoding="utf-8") as fs:
+        fs.write(sh_content)
 
     return {"req_idx": req_idx, "path": path, "title": req_title}
 
-def main():
+def _get_config(args):
+    """Builds ChatConfig and TerminalColors from arguments."""
+    base_url = build_base_url(args.host, args.port)
+    verify_connection(base_url)
+    config = ChatConfig(
+        api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
+        model=args.model, quiet_mode=True, stream_output=True,
+        insecure=False, silent_mode=True
+    )
+    colors = TerminalColors(enable_color=True)
+    return config, colors
+
+def _process_topics(data, config, colors, uuid):
+    """Processes all planned topics into scripts."""
+    tmp_dir = "./tmp"
+    os.makedirs(tmp_dir, exist_ok=True)
+    data["scripts"] = []
+    for topic_data in data["planned_topics"]:
+        res = code_job(topic_data, config, colors, tmp_dir, (uuid, uuid))
+        if res:
+            data["scripts"].append(res)
+
+def _parse_args():
+    """Parses command line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--in-json", required=True)
     parser.add_argument("--host", default="localhost")
@@ -169,38 +197,36 @@ def main():
     parser.add_argument("--model", default="gemma3n:e4b")
     parser.add_argument("--out-json", required=True)
     parser.add_argument("--uuid", required=True)
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    if not os.path.exists(args.in_json):
-        print(f">>> Skipping Phase 4: Input file {args.in_json} not found.")
-        with open(args.out_json, "w", encoding="utf-8") as f:
+def _run_phase4(in_json, out_json, uuid, config, colors):
+    """Executes Phase 4 logic."""
+    # pylint: disable=too-many-locals
+    if not os.path.exists(in_json):
+        print(f">>> Skipping Phase 4: Input file {in_json} not found.")
+        with open(out_json, "w", encoding="utf-8") as f:
             json.dump({}, f)
         return
 
-    with open(args.in_json, "r", encoding="utf-8") as f:
+    with open(in_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    if "planned_topics" not in data or not data["planned_topics"]:
+    if not data.get("planned_topics"):
         print("No planned topics to code.")
-        with open(args.out_json, "w", encoding="utf-8") as f:
+        with open(out_json, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return
 
-    base_url = build_base_url(args.host, args.port)
-    verify_connection(base_url)
-    config = ChatConfig(api_url=f"{base_url.rstrip('/')}/v1/chat/completions", model=args.model, quiet_mode=True, stream_output=True, insecure=False, silent_mode=True)
-    colors = TerminalColors(enable_color=True)
-    tmp_dir = "./tmp"
-    os.makedirs(tmp_dir, exist_ok=True)
-    data["scripts"] = []
+    _process_topics(data, config, colors, uuid)
 
-    for topic_data in data["planned_topics"]:
-        res = code_job(topic_data, config, colors, tmp_dir, args.uuid, args.uuid)
-        if res:
-            data["scripts"].append(res)
-
-    with open(args.out_json, "w", encoding="utf-8") as f:
+    with open(out_json, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def main():
+    """Main entry point for Phase 4 coding."""
+    args = _parse_args()
+    config, colors = _get_config(args)
+    _run_phase4(args.in_json, args.out_json, args.uuid, config, colors)
 
 if __name__ == "__main__":
     main()
