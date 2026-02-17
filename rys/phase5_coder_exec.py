@@ -132,7 +132,8 @@ def main():
     full_script = "\n".join(script_lines)
     
     session_uuid = os.environ.get("RYS_UUID", "default")
-    script_path = f"./tmp/.rys.{session_uuid}.{req_id}.sh"
+    cache_dir = os.environ.get("RYS_CACHE_DIR", "./tmp")
+    script_path = os.path.abspath(os.path.join(cache_dir, f".rys.{session_uuid}.{req_id}.sh"))
     
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(full_script)

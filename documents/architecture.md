@@ -17,4 +17,4 @@ Recursive Yak Shaver (RYS) は、LLMを活用した「段階的分解・実行�
 - `rys/phase*.py`: 各フェーズのロジック。
 - `roles/*.md`: 各エージェントのシステムプロンプト。
 - `config/*.json`: スキル、リスク管理、設定情報。
-- `tmp/`: フェーズ間のキャッシュ（JSON形式）。
+- `~/.cache/rys/`: フェーズ間のキャッシュ（JSON形式）。XDG Base Directory 規格に準拠。

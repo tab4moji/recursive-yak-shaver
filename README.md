@@ -6,7 +6,7 @@
 
 - **Content-Based Caching**: Caches are now tied to the **hash of the input content** for each phase. If the translation or dispatch result remains identical, subsequent phases are reused, significantly accelerating the development cycle.
 - **Config-Aware Invalidation**: RYS automatically detects changes in your `config/skills/*.json` files. Tweaking a cheatsheet will automatically invalidate related downstream caches.
-- **Embedded Cache Engine**: `rys/embedding.py` provides high-performance vectorization with persistent disk caching in `tmp/`. Identical inputs for the same model yield zero-latency cache hits, enabling offline RAG and faster semantic analysis.
+- **Embedded Cache Engine**: `rys/embedding.py` provides high-performance vectorization with persistent disk caching in the XDG cache directory. Identical inputs for the same model yield zero-latency cache hits, enabling offline RAG and faster semantic analysis.
 - **Mono-Role Responsibility**: Each phase is governed by a single, specialized role (Engineer for planning, Coder for implementation) to ensure focused reasoning and prevent logic leakage.
 - **Discovery-Action Pairing**: Complex tasks are split into "Discovery" (Locating target) and "Action" (Executing operation) milestones to ensure reliability.
 - **Affirmative Control**: All role directives and cheatsheets use purely affirmative language ("Do this") to maximize LLM instruction-following and stability.

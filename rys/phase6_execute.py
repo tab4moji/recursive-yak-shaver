@@ -27,15 +27,27 @@ def main():
         return
 
     print(">>> Phase 6: Execution Phase")
+    cache_dir = os.environ.get("RYS_CACHE_DIR", "")
+
     for s in scripts:
+        path = s['path']
+        
+        # Path Correction Logic:
+        # If the path in JSON is missing, try looking for the filename in the current RYS_CACHE_DIR
+        if not os.path.exists(path) and cache_dir:
+            filename = os.path.basename(path)
+            alt_path = os.path.join(cache_dir, filename)
+            if os.path.exists(alt_path):
+                path = alt_path
+
         print(f"==================================================")
         print(f"Executing {s['request_id']} ({s['skill']})")
-        print(f"Path: {s['path']}")
+        print(f"Path: {path}")
         print(f"--------------------------------------------------")
         
         # Display script content
         try:
-            with open(s['path'], 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 print(f.read())
         except Exception as e:
             print(f"(Error reading script: {e})")
@@ -48,7 +60,7 @@ def main():
                 print("Skipped.")
                 continue
         
-        subprocess.run(s['path'], shell=True)
+        subprocess.run(path, shell=True)
         print("--------------------------------------------------\n")
 
 if __name__ == "__main__":

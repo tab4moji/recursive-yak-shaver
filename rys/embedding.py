@@ -51,7 +51,7 @@ def get_embedding(
     args: argparse.Namespace
 ) -> List[float]:
     """Gets embedding for a single text, using cache if available and sufficient."""
-    cache_dir = "tmp"
+    cache_dir = os.environ.get("RYS_CACHE_DIR", "tmp")
     # Unified cache key (no dims in key)
     cache_key = hashlib.sha256(f"{model}:{text}".encode("utf-8")).hexdigest()
     cache_path = os.path.join(cache_dir, f"embed_{cache_key}.json")

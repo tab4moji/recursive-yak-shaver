@@ -15,6 +15,10 @@ STOP_PHASE=6
 REQ_FILTER=""
 export RYS_SIMILARITY="0.0"
 
+# XDG Base Directory Support
+export RYS_CACHE_DIR="${RYS_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/rys}"
+mkdir -p "${RYS_CACHE_DIR}"
+
 # Simple Argument Parsing
 for arg in "$@"; do
     if [[ $arg == --from=* ]]; then
@@ -37,8 +41,6 @@ if [ -z "$PROMPT" ]; then
     echo "Usage: $0 \"Your prompt here\" [--from=N]"
     exit 1
 fi
-
-mkdir -p ./tmp/
 
 # Initial Session ID based on prompt
 prompt_hash=$(printf "%s" "$PROMPT" | md5sum | cut -c1-8)
@@ -109,7 +111,7 @@ print(hashlib.md5(contents.encode()).hexdigest()[:8])
 
 # Phase 1: Translation (Input: PROMPT)
 P1_HASH=$(printf "%s" "$PROMPT" | md5sum | cut -c1-8)
-P1_JSON="./tmp/.cache.p1.${P1_HASH}.json"
+P1_JSON="${RYS_CACHE_DIR}/.cache.p1.${P1_HASH}.json"
 export RYS_UUID="${P1_HASH}"
 
 if run_check 1 "${P1_JSON}"; then
@@ -123,7 +125,7 @@ check_stop 1
 
 # Phase 2: Dispatch (Input: P1_JSON + CONFIG)
 P2_HASH=$( (md5sum < "${P1_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
-P2_JSON="./tmp/.cache.p2.${P2_HASH}.json"
+P2_JSON="${RYS_CACHE_DIR}/.cache.p2.${P2_HASH}.json"
 export RYS_UUID="${P2_HASH}"
 
 if run_check 2 "${P2_JSON}"; then
@@ -137,7 +139,7 @@ check_stop 2
 
 # Phase 3: Grouping (Input: P2_JSON + CONFIG)
 P3_HASH=$( (md5sum < "${P2_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
-P3_JSON="./tmp/.cache.p3.${P3_HASH}.json"
+P3_JSON="${RYS_CACHE_DIR}/.cache.p3.${P3_HASH}.json"
 export RYS_UUID="${P3_HASH}"
 
 if run_check 3 "${P3_JSON}"; then
@@ -151,7 +153,7 @@ check_stop 3
 
 # Phase 4: Request Processing (Input: P3_JSON + CONFIG)
 P4_HASH=$( (md5sum < "${P3_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
-P4_JSON="./tmp/.cache.p4.${P4_HASH}.json"
+P4_JSON="${RYS_CACHE_DIR}/.cache.p4.${P4_HASH}.json"
 export RYS_UUID="${P4_HASH}"
 
 if run_check 4 "${P4_JSON}"; then
@@ -165,7 +167,7 @@ check_stop 4
 
 # Phase 5: Script Generation (Input: P4_JSON + CONFIG)
 P5_HASH=$( (md5sum < "${P4_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
-P5_JSON="./tmp/.cache.p5.${P5_HASH}.json"
+P5_JSON="${RYS_CACHE_DIR}/.cache.p5.${P5_HASH}.json"
 export RYS_UUID="${P5_HASH}"
 
 if run_check 5 "${P5_JSON}"; then
@@ -175,7 +177,9 @@ if run_check 5 "${P5_JSON}"; then
     python3 ./rys/phase5_generate.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${RYS_UUID}" ${common_args} ${req_arg}
 else
     echo -e "\n>>> 5. Script Generation Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P5_JSON}')); [print(f'Generated {s[\"request_id\"]} ({s[\"skill\"]}) -> {s[\"path\"]}') for s in d.get('generated_scripts', [])]"
+    # Resolve and show path based on RYS_CACHE_DIR if the stored path is not found
+    python3 -c "import json, os; d=json.load(open('${P5_JSON}')); cache_dir=os.environ.get('RYS_CACHE_DIR',''); \
+    [print(f'Generated {s[\"request_id\"]} ({s[\"skill\"]}) -> {s[\"path\"] if os.path.exists(s[\"path\"]) else os.path.join(cache_dir, os.path.basename(s[\"path\"]))}') for s in d.get('generated_scripts', [])]"
 fi
 check_stop 5
 
@@ -189,4 +193,4 @@ python3 ./rys/phase6_execute.py --in-json "${P5_JSON}" $auto_flag
 # Example: RAG / Semantic Search
 # python3 ./rys/embedding.py "Search Query" --quiet
 
-echo -e "\nAll Done. Results stored in ./tmp/"
+echo -e "\nAll Done. Results stored in ${RYS_CACHE_DIR}"

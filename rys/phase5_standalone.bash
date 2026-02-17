@@ -36,6 +36,10 @@ export RYS_LLM_HOST="${RYS_LLM_HOST:-localhost}"
 export RYS_LLM_PORT="${RYS_LLM_PORT:-11434}"
 export RYS_LLM_MODEL="${RYS_LLM_MODEL:-gemma3n:e4b}"
 
+# XDG Base Directory Support
+export RYS_CACHE_DIR="${RYS_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/rys}"
+mkdir -p "${RYS_CACHE_DIR}"
+
 # Determine Hash
 if [[ "$INPUT" =~ ^[0-9a-f]{8}$ ]]; then
     prompt_hash="$INPUT"
@@ -44,7 +48,7 @@ else
 fi
 export RYS_UUID="${prompt_hash}"
 
-P4_JSON="./tmp/.rys.${prompt_hash}.p4.json"
+P4_JSON="${RYS_CACHE_DIR}/.rys.${prompt_hash}.p4.json"
 
 if [ ! -f "$P4_JSON" ]; then
     echo "Error: Cache file ${P4_JSON} not found."

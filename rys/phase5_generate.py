@@ -151,7 +151,8 @@ def main():
         if final_binding:
             script_lines.append(f"# --- Final Result Display ---\necho \"\"\necho \"[RESULT: {req_id}]\"\necho \"${final_binding}\"\necho \"\"\n")
 
-        script_path = f"./tmp/.rys.{args.uuid}.{req_id}.sh"
+        cache_dir = os.environ.get("RYS_CACHE_DIR", "./tmp")
+        script_path = os.path.abspath(os.path.join(cache_dir, f".rys.{args.uuid}.{req_id}.sh"))
         with open(script_path, "w", encoding="utf-8") as f:
             f.write("\n".join(script_lines))
         os.chmod(script_path, 0o755)
