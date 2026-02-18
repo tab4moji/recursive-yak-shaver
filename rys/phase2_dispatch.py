@@ -123,7 +123,9 @@ def main():
             data["dispatch_out"] = dispatch_out
             result_data = data
     except (FileNotFoundError, ConnectionError, json.JSONDecodeError, IOError) as e:
-        print(f">>> Skipping Phase 2: {e}", file=sys.stderr)
+        print(f">>> Error in Phase 2: {e}", file=sys.stderr)
+        sys.exit(1)
+
     with open(args.out_json, "w", encoding="utf-8") as f_out:
         json.dump(result_data, f_out, ensure_ascii=False, indent=2)
     return
