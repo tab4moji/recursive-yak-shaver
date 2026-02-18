@@ -9,11 +9,57 @@ Common functions for RYS phase scripts.
 import os
 import re
 import subprocess
-from typing import List, Optional, Any, Dict
+import argparse
+import json
+import sys
+from typing import List, Optional, Any, Dict, Tuple
 from invoke_role import invoke_role_api
 from role_utils import format_as_toon
+from chat_api import build_base_url, verify_connection
+from chat_types import ChatConfig
+from chat_ui import TerminalColors
 
 # pylint: disable=useless-return
+
+def get_common_parser(description: str) -> argparse.ArgumentParser:
+    """Returns an ArgumentParser with common RYS phase options."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--in-json", help="Input JSON file path")
+    parser.add_argument("--out-json", help="Output JSON file path")
+    parser.add_argument("--host", default="localhost", help="LLM Host")
+    parser.add_argument("--port", help="LLM Port")
+    parser.add_argument("--model", default="gemma3n:e4b", help="LLM Model")
+    parser.add_argument("--uuid", help="Session UUID")
+    return parser
+
+
+def init_llm_config(args: argparse.Namespace) -> Tuple[ChatConfig, TerminalColors]:
+    """Initializes ChatConfig and TerminalColors based on common arguments."""
+    base_url = build_base_url(args.host, args.port)
+    verify_connection(base_url)
+    config = ChatConfig(
+        api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
+        model=args.model,
+        quiet_mode=True,
+        stream_output=True,
+        insecure=False
+    )
+    colors = TerminalColors(enable_color=True)
+    return config, colors
+
+
+def load_phase_json(path: str) -> Dict[str, Any]:
+    """Loads a JSON file with existence and error checks."""
+    if not path or not os.path.exists(path):
+        print(f">>> Error: Input file '{path}' not found.", file=sys.stderr)
+        sys.exit(1)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f">>> Error loading '{path}': {e}", file=sys.stderr)
+        sys.exit(1)
+
 
 def resolve_refs(data: Any) -> Any:
     """Recursively replaces ref:TOPIC<N>.<binding> with $<binding>."""

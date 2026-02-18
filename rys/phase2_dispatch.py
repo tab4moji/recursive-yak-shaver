@@ -11,7 +11,6 @@
 
 import sys
 import os
-import argparse
 import json
 import glob
 
@@ -23,10 +22,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.append(SCRIPT_DIR)
 
-from chat_types import ChatConfig
-from chat_ui import TerminalColors
-from chat_api import build_base_url, verify_connection
-from phase_utils import call_role
+from chat_api import build_base_url
+from phase_utils import call_role, get_common_parser, init_llm_config, load_phase_json
 from embedding import get_embedding, cosine_similarity
 
 # pylint: disable=too-few-public-methods
@@ -84,33 +81,19 @@ def main():
     """
     メイン実行関数。
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--in-json", required=True)
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", default="11434")
-    parser.add_argument("--model", default="gemma3n:e4b")
-    parser.add_argument("--out-json", required=True)
+    parser = get_common_parser("Phase 2: Dispatch Phase")
     parser.add_argument("--similarity", type=float, default=0.0)
     parser.add_argument("--embed-model", default="gemma:latest")
     args = parser.parse_args()
+
     result_data = {}
     try:
-        if not os.path.exists(args.in_json):
-            raise FileNotFoundError(f"Input file {args.in_json} not found.")
-        with open(args.in_json, "r", encoding="utf-8") as f_in:
-            data = json.load(f_in)
+        data = load_phase_json(args.in_json)
         input_text = data.get("content", data.get("translated_text", ""))
-        base_url = build_base_url(args.host, args.port)
-        verify_connection(base_url)
-        config = ChatConfig(
-            api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
-            model=args.model,
-            quiet_mode=True,
-            stream_output=True,
-            insecure=False
-        )
-        colors = TerminalColors(enable_color=True)
+        config, colors = init_llm_config(args)
+
         best_match = None
+        base_url = build_base_url(args.host, args.port)
         if args.similarity > 0:
             best_match = search_embedding_cache(input_text, args, base_url, colors)
         if best_match:

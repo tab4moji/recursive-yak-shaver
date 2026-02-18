@@ -8,14 +8,10 @@ Includes Titler for better UX and fixes cache naming.
 
 import sys
 import os
-import argparse
 import json
 import hashlib
 import yaml
-from chat_types import ChatConfig
-from chat_ui import TerminalColors
-from chat_api import build_base_url, verify_connection
-from phase_utils import call_role
+from phase_utils import call_role, get_common_parser, init_llm_config, load_phase_json
 import group_requests
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -149,23 +145,10 @@ def _build_exec_plan(groups, titles_out):
 
 def main():
     """Main execution function for Strategic Planning."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--in-json", required=True)
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", default="11434")
-    parser.add_argument("--model", default="gemma3n:e4b")
-    parser.add_argument("--out-json", required=True)
-    parser.add_argument("--uuid", required=True)
+    parser = get_common_parser("Phase 3: Strategic Planning")
     args = parser.parse_args()
 
-    if not os.path.exists(args.in_json):
-        print(f">>> Skipping Phase 3: Input file {args.in_json} not found.")
-        with open(args.out_json, "w", encoding="utf-8") as f:
-            json.dump({}, f)
-        return
-
-    with open(args.in_json, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_phase_json(args.in_json)
 
     # Perform Grouping (Use 'content' if available)
     dispatch_out = data.get("content", data.get("dispatch_out", ""))
@@ -174,14 +157,7 @@ def main():
 
     visual_input = _build_visual_input(groups)
 
-    base_url = build_base_url(args.host, args.port)
-    verify_connection(base_url)
-    config = ChatConfig(
-        api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
-        model=args.model, quiet_mode=True, stream_output=True,
-        insecure=False, silent_mode=True
-    )
-    colors = TerminalColors(enable_color=True)
+    config, colors = init_llm_config(args)
 
     print("\n>>> Generating Task Titles...")
     titles_out = call_role(SCRIPT_DIR, "titler", visual_input, config, colors)

@@ -6,11 +6,10 @@ Analyzes I/O types and integrates raw topic data for complete information.
 """
 
 import sys
-import os
 import json
-import argparse
 import subprocess
 from typing import Dict
+from phase_utils import get_common_parser, load_phase_json
 
 def run_analyzer_llm(req: Dict, topic_map: Dict, host: str, port: str, model: str) -> Dict:
     """Step 4-A: Structured Analysis using LLM."""
@@ -48,21 +47,10 @@ def run_analyzer_llm(req: Dict, topic_map: Dict, host: str, port: str, model: st
 
 def main():
     """Main execution loop for Phase 4 REQUEST processing."""
-    parser = argparse.ArgumentParser(description="Phase 4: REQUEST Processing Loop")
-    parser.add_argument("--in-json", required=True, help="Path to Phase 3 output JSON")
-    parser.add_argument("--out-json", required=True, help="Path to save Phase 4 output JSON")
-    parser.add_argument("--host", default="localhost", help="LLM Host")
-    parser.add_argument("--port", help="LLM Port")
-    parser.add_argument("--model", default="gemma3n:e4b", help="LLM Model")
-    parser.add_argument("--uuid", help="Session UUID")
-
+    parser = get_common_parser("Phase 4: REQUEST Processing Loop")
     args = parser.parse_args()
 
-    if not os.path.exists(args.in_json):
-        sys.exit(1)
-
-    with open(args.in_json, 'r', encoding='utf-8') as f:
-        p3_data = json.load(f)
+    p3_data = load_phase_json(args.in_json)
 
     topic_map = {t["id"]: t for t in p3_data.get("all_topics", [])}
 

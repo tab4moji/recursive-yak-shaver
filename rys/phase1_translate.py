@@ -10,7 +10,6 @@
 
 import sys
 import os
-import argparse
 import json
 
 # pylint: disable=wrong-import-position,useless-return
@@ -18,34 +17,17 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.append(SCRIPT_DIR)
 
-from chat_types import ChatConfig
-from chat_ui import TerminalColors
-from chat_api import build_base_url, verify_connection
-from phase_utils import call_role
+from phase_utils import call_role, get_common_parser, init_llm_config
 
 def main():
     """
     メイン処理: 引数を解析し、翻訳を実行して結果をファイルに出力する。
     """
-    parser = argparse.ArgumentParser()
+    parser = get_common_parser("Phase 1: Translation Phase")
     parser.add_argument("--prompt", required=True)
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", default="11434")
-    parser.add_argument("--model", default="gemma3n:e4b")
-    parser.add_argument("--out-json", required=True)
     args = parser.parse_args()
 
-    base_url = build_base_url(args.host, args.port)
-    verify_connection(base_url)
-
-    config = ChatConfig(
-        api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
-        model=args.model,
-        quiet_mode=True,
-        stream_output=True,
-        insecure=False
-    )
-    colors = TerminalColors(enable_color=True)
+    config, colors = init_llm_config(args)
 
     translated_text = call_role(SCRIPT_DIR, "translater", args.prompt, config, colors)
 

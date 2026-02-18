@@ -8,14 +8,10 @@ Renamed from Phase 5 to Phase 4.
 
 import sys
 import os
-import argparse
 import json
 import re
 import hashlib
-from chat_types import ChatConfig
-from chat_ui import TerminalColors
-from chat_api import build_base_url, verify_connection
-from phase_utils import call_role, parse_steps
+from phase_utils import call_role, parse_steps, get_common_parser, init_llm_config, load_phase_json
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
@@ -166,18 +162,6 @@ def code_job(topic_data, config, colors, tmp_dir, identifiers):
 
     return {"req_idx": req_idx, "path": path, "title": req_title}
 
-def _get_config(args):
-    """Builds ChatConfig and TerminalColors from arguments."""
-    base_url = build_base_url(args.host, args.port)
-    verify_connection(base_url)
-    config = ChatConfig(
-        api_url=f"{base_url.rstrip('/')}/v1/chat/completions",
-        model=args.model, quiet_mode=True, stream_output=True,
-        insecure=False, silent_mode=True
-    )
-    colors = TerminalColors(enable_color=True)
-    return config, colors
-
 def _process_topics(data, config, colors, uuid):
     """Processes all planned topics into scripts."""
     tmp_dir = "./tmp"
@@ -188,45 +172,24 @@ def _process_topics(data, config, colors, uuid):
         if res:
             data["scripts"].append(res)
 
-def _parse_args():
-    """Parses command line arguments."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--in-json", required=True)
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", default="11434")
-    parser.add_argument("--model", default="gemma3n:e4b")
-    parser.add_argument("--out-json", required=True)
-    parser.add_argument("--uuid", required=True)
-    return parser.parse_args()
+def main():
+    """Main entry point for Phase 4 coding."""
+    parser = get_common_parser("Phase 4: Step-by-Step Coding")
+    args = parser.parse_args()
 
-def _run_phase4(in_json, out_json, uuid, config, colors):
-    """Executes Phase 4 logic."""
-    # pylint: disable=too-many-locals
-    if not os.path.exists(in_json):
-        print(f">>> Skipping Phase 4: Input file {in_json} not found.")
-        with open(out_json, "w", encoding="utf-8") as f:
-            json.dump({}, f)
-        return
-
-    with open(in_json, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_phase_json(args.in_json)
 
     if not data.get("planned_topics"):
         print("No planned topics to code.")
-        with open(out_json, "w", encoding="utf-8") as f:
+        with open(args.out_json, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return
 
-    _process_topics(data, config, colors, uuid)
+    config, colors = init_llm_config(args)
+    _process_topics(data, config, colors, args.uuid)
 
-    with open(out_json, "w", encoding="utf-8") as f:
+    with open(args.out_json, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
-def main():
-    """Main entry point for Phase 4 coding."""
-    args = _parse_args()
-    config, colors = _get_config(args)
-    _run_phase4(args.in_json, args.out_json, args.uuid, config, colors)
 
 if __name__ == "__main__":
     main()
