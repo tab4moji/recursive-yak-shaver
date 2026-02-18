@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# 0.2: Terminal UI Utilities
+# リポジトリ規約に基づき pylint の指摘事項を修正
 """
 Terminal UI Utilities (v0.2)
 
@@ -23,6 +25,7 @@ except ImportError:
 
 class TerminalColors:
     """Manages ANSI color codes and readline escape sequences."""
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, enable_color: bool = True):
         self.reset_code = ""
@@ -51,10 +54,10 @@ class TerminalColors:
 
     def colorize(self, text: str, color_code: str) -> str:
         """Wraps text with the specified color code and reset code."""
-        result = text
+        res = text
         if self.reset_code:
-            result = f"{color_code}{text}{self.reset_code}"
-        return result
+            res = f"{color_code}{text}{self.reset_code}"
+        return res
 
     def wrap_error(self, text: str) -> str:
         """Wraps text specifically in the error color."""
@@ -98,7 +101,7 @@ def handle_interactive_output(
             sys.stdout.write(ai_prefix)
             sys.stdout.flush()
             time_to_wait = False
-        
+
         if not silent:
             sys.stdout.write(chunk)
             sys.stdout.flush()

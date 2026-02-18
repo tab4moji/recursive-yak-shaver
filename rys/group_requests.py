@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# 1.3: Grouping Phase Core Logic
+# リポジトリ規約に基づき pylint の指摘事項を修正
 """
 Grouping Phase Core Logic (v1.3)
 Step 1: ID Assignment + Title Extraction
@@ -10,7 +12,6 @@ Final: Sequence numbering with titles
 
 import sys
 import os
-import json
 import re
 import subprocess
 from typing import List, Dict, Any
@@ -40,21 +41,22 @@ def parse_input(dispatch_text: str) -> Dict[str, List[str]]:
     return groups
 
 
-def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: str, model: str) -> List[str]:
+def run_grouper_llm(skill: str, topics: List[Dict[str, str]],
+                   host: str, port: str, model: str) -> List[str]:
     """Step 3 (Gemma-3N): Intelligent grouping."""
     print("Phase3-Step3(gemma-3n):")
-    
+
     input_text = f"  {skill}: {', '.join([t['id'] for t in topics])}\n"
     for t in topics:
         input_text += f"    {t['id']}: {t['raw']}\n"
-    
+
     print("Input for LLM:")
     print(input_text.rstrip())
 
     cmd = [
         "python3", "./rys/invoke_role.py",
         f"--host={host}",
-        f"--role=grouper",
+        "--role=grouper",
         f"--prompt={input_text}",
         f"--model={model}"
     ]
@@ -63,132 +65,144 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]], host: str, port: s
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
+
         output_lines = []
         print("\nRaw LLM Output:")
         print(f"---START---\n{result.stdout.strip()}\n---END---")
-        
+
         print("\nParsed Grouping:")
         for line in result.stdout.strip().split('\n'):
             line = line.strip()
             if line.startswith("REQUEST:"):
                 print(f"  {line}")
                 output_lines.append(line)
-        
-        return output_lines
-    except Exception as e:
+        res = output_lines
+    except Exception as e:  # pylint: disable=broad-exception-caught
         sys.stderr.write(f"Error calling grouper LLM: {e}\n")
-        return [f"REQUEST: {t['id']}" for t in topics]
+        res = [f"REQUEST: {t['id']}" for t in topics]
 
-def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Dict[str, Any]:
-    # Step 1: Assign TOPIC<N> IDs + Extract Titles (Python)
+    return res
+
+def _assign_topic_ids(dispatch_text: str) -> List[Dict[str, str]]:
+    """Step 1: Assign TOPIC<N> IDs + Extract Titles."""
     print("Phase3-Step1(python):")
     lines = [line.strip() for line in dispatch_text.strip().split('\n') if line.strip()]
     all_topics = []
-    topic_map = {}
-    
+
     for i, line in enumerate(lines, 1):
         topic_id = f"TOPIC{i}"
-        
-        # Extract title from "TOPIC: <Title> |"
         title = "Unknown"
         title_match = re.match(r"^TOPIC:\s*(.*?)\s*\|", line)
         if title_match:
             title = title_match.group(1)
-            
+
         skill = "IDONTKNOW"
         if "| SKILLS: " in line:
             skill = line.split("| SKILLS: ")[-1].strip()
         elif "| IDONTKNOW: " in line:
             skill = "IDONTKNOW"
         elif " | " in line:
-            # Fallback: check if the last part looks like a skill (not containing common sentences)
             last_part = line.split(" | ")[-1].strip()
             if ":" in last_part:
-                potential_skill = last_part.split(":")[0].strip()
-                if potential_skill in ["shell_exec", "python_math", "python_script", "web_access"]:
-                    skill = potential_skill
-            
+                pot_skill = last_part.split(":")[0].strip()
+                if pot_skill in ["shell_exec", "python_math", "python_script", "web_access"]:
+                    skill = pot_skill
+
         t_data = {"id": topic_id, "title": title, "raw": line, "skill": skill}
         all_topics.append(t_data)
-        topic_map[topic_id] = t_data
         print(f"  {topic_id}: {line}")
 
-    # Step 2: Group by Skill (Python)
-    print("\nPhase3-Step2(python): Grouping by skill...")
-    skill_groups = {}  # skill -> list of topics
-    idontknow_topics = []
-    for t in all_topics:
-        if t["skill"] == "IDONTKNOW":
-            idontknow_topics.append(t)
-        else:
-            skill_groups.setdefault(t["skill"], []).append(t)
+    return all_topics
 
-    # Step 3: LLM Grouping (Gemma-3N)
+def _group_by_skill(all_topics: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
+    """Step 2: Group by Skill."""
+    print("\nPhase3-Step2(python): Grouping by skill...")
+    skill_groups = {}
+    for t in all_topics:
+        if t["skill"] != "IDONTKNOW":
+            skill_groups.setdefault(t["skill"], []).append(t)
+    return skill_groups
+
+def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
+                             idontknow_topics: List[Dict[str, str]],
+                             host: str, port: str, model: str) -> List[Dict[str, Any]]:
+    """Step 3: Intelligent Grouping."""
     print("")
     raw_requests = []
-    
-    # Handle IDONTKNOW separately (one request per topic)
+
     for t in idontknow_topics:
         raw_requests.append({"skill": "IDONTKNOW", "topic_ids": [t["id"]]})
-    
-    # Intelligent grouping per skill
+
     for skill, topics in skill_groups.items():
         if len(topics) == 1:
             raw_requests.append({"skill": skill, "topic_ids": [topics[0]["id"]]})
         else:
             llm_results = run_grouper_llm(skill, topics, host, port, model)
             if not llm_results:
-                print(f"  Warning: No valid REQUEST lines found for {skill}. Falling back to individual topics.")
+                print(f"  Warning: No valid REQUEST lines found for {skill}.")
                 llm_results = [f"REQUEST: {t['id']}" for t in topics]
-                
+
             for req_str in llm_results:
                 ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
                 if ids:
                     raw_requests.append({"skill": skill, "topic_ids": ids})
+    return raw_requests
 
-    # Final Step: Sort and Number Requests with Titles
+def _format_final_requests(raw_requests: List[Dict[str, Any]],
+                           topic_map: Dict[str, Dict[str, str]]) -> List[Dict[str, Any]]:
+    """Final Step: Sort and Number Requests with Titles."""
     def get_min_topic_idx(req):
-        return min([int(tid.replace("TOPIC", "")) for tid in req["topic_ids"]])
+        return min(int(tid.replace("TOPIC", "")) for tid in req["topic_ids"])
 
     raw_requests.sort(key=get_min_topic_idx)
-    
+
     final_requests = []
     print("\nFinal Grouped Requests:")
     for i, req in enumerate(raw_requests, 1):
         req_id = f"REQUEST{i}"
-        
-        # Build topic string like "TOPIC3(Find smallest file), TOPIC4(Display smallest file)"
         topic_parts = []
         for tid in req["topic_ids"]:
             t_info = topic_map.get(tid, {})
             title = t_info.get("title", "Unknown")
             topic_parts.append(f"{tid}({title})")
-            
+
         topic_str = ", ".join(topic_parts)
         display_str = f"{req_id}: {topic_str}"
         print(display_str)
-        
+
         final_requests.append({
-            "id": req_id,
-            "skill": req["skill"],
-            "topics": req["topic_ids"],
-            "display": display_str
+            "id": req_id, "skill": req["skill"],
+            "topics": req["topic_ids"], "display": display_str
         })
+    return final_requests
+
+def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Dict[str, Any]:
+    """Processes grouping workflow."""
+    all_topics = _assign_topic_ids(dispatch_text)
+    topic_map = {t["id"]: t for t in all_topics}
+
+    skill_groups = _group_by_skill(all_topics)
+    idontknow_topics = [t for t in all_topics if t["skill"] == "IDONTKNOW"]
+
+    raw_reqs = _llm_intelligent_grouping(skill_groups, idontknow_topics, host, port, model)
+    final_reqs = _format_final_requests(raw_reqs, topic_map)
 
     return {
         "all_topics": all_topics,
-        "grouped_requests": final_requests
+        "grouped_requests": final_reqs
     }
 
-if __name__ == "__main__":
-    import os
-    dispatch_text = sys.stdin.read() if not sys.stdin.isatty() else ""
-    if not dispatch_text:
+def main():
+    """Main function to handle stdin input."""
+    input_text = sys.stdin.read() if not sys.stdin.isatty() else ""
+    if not input_text:
         sys.exit(0)
-        
-    host = os.environ.get("RYS_LLM_HOST", "localhost")
-    port = os.environ.get("RYS_LLM_PORT", "")
-    model = os.environ.get("RYS_LLM_MODEL", "gemma3n:e4b")
-    
-    process_grouping(dispatch_text, host, port, model)
+
+    host_env = os.environ.get("RYS_LLM_HOST", "localhost")
+    port_env = os.environ.get("RYS_LLM_PORT", "")
+    model_env = os.environ.get("RYS_LLM_MODEL", "gemma3n:e4b")
+
+    process_grouping(input_text, host_env, port_env, model_env)
+
+if __name__ == "__main__":
+    main()

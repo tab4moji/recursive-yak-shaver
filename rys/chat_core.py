@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# 0.3: OpenAI-compatible API Connection Command
+# リポジトリ規約に基づき pylint の指摘事項を修正
 """
 OpenAI-compatible API Connection Command. (v0.3)
 
@@ -16,7 +18,10 @@ from typing import Dict, List, Optional, Any
 
 from chat_types import ChatConfig
 from chat_ui import TerminalColors, handle_interactive_output, handle_quiet_output
-from chat_api import verify_connection, load_session_data, stream_chat_completion, build_base_url, encode_image
+from chat_api import (
+    verify_connection, load_session_data, stream_chat_completion,
+    build_base_url, encode_image
+)
 
 def process_turn(
     config: ChatConfig,
@@ -28,13 +33,9 @@ def process_turn(
     """Orchestrates a single turn of conversation."""
     if prompt_text:
         if pending_images:
-            # Construct multimodal message (OpenAI Vision format)
             content_list = [{"type": "text", "text": prompt_text}]
             for img_url in pending_images:
-                content_list.append({
-                    "type": "image_url",
-                    "image_url": {"url": img_url}
-                })
+                content_list.append({"type": "image_url", "image_url": {"url": img_url}})
             messages.append({"role": "user", "content": content_list})
         else:
             messages.append({"role": "user", "content": prompt_text})
@@ -77,16 +78,18 @@ def _run_interactive_loop(
     colors: TerminalColors
 ) -> None:
     """Runs the main interactive REPL loop."""
-    print(colors.colorize("Type 'exit' to stop. Type '/image <path>' to attach image.\n", colors.sys_color))
-    
+    print(colors.colorize("Type 'exit' to stop. Type '/image <path>' to attach image.\n",
+                          colors.sys_color))
+
     pending_images = []
 
     while True:
         try:
             prompt_str = f"{colors.prompt_prefix}You > {colors.prompt_suffix}"
             if pending_images:
-                prompt_str = f"{colors.prompt_prefix}You (Img:{len(pending_images)}) > {colors.prompt_suffix}"
-            
+                prompt_str = f"{colors.prompt_prefix}You (Img:{len(pending_images)}) > " \
+                             f"{colors.prompt_suffix}"
+
             user_input = input(prompt_str)
 
             if not user_input:
@@ -94,14 +97,13 @@ def _run_interactive_loop(
 
             if user_input.lower() in ["exit", "quit"]:
                 break
-            
-            # Handle /image command
+
             if user_input.lower().startswith("/image "):
                 path = user_input[7:].strip()
-                # Remove quotes if user added them
-                if (path.startswith('"') and path.endswith('"')) or (path.startswith("'") and path.endswith("'")):
+                if (path.startswith('"') and path.endswith('"')) or \
+                   (path.startswith("'") and path.endswith("'")):
                     path = path[1:-1]
-                
+
                 img_data = encode_image(path)
                 if img_data:
                     pending_images.append(img_data)
@@ -110,8 +112,9 @@ def _run_interactive_loop(
                     print(colors.wrap_error(f" [Error] Could not load image: {path}"))
                 continue
 
-            process_turn(config, messages, colors, prompt_text=user_input, pending_images=pending_images)
-            pending_images = [] # Clear images after sending
+            process_turn(config, messages, colors, prompt_text=user_input,
+                         pending_images=pending_images)
+            pending_images = []
 
         except (KeyboardInterrupt, EOFError):
             print("\nBye.")
@@ -177,20 +180,15 @@ def main() -> None:
     parser.add_argument("--host", default="localhost", help="Target Host IP")
     parser.add_argument("--port", "-p", help="Target Port")
     parser.add_argument("--model", "-m", default="gemma3n:e4b", help="Model name")
-    parser.add_argument(
-        "--system", "-s", default="You are a helpful assistant.",
-        help="System prompt"
-    )
+    parser.add_argument("--system", "-s", default="You are a helpful assistant.",
+                        help="System prompt")
     parser.add_argument("--prompt", help="Initial prompt")
     parser.add_argument("--session-file", help="History file path")
     parser.add_argument("--session-json", help="History JSON string")
     parser.add_argument("--quit", "-q", action="store_true", help="Quiet mode")
     parser.add_argument("--stream", action="store_true", help="Force streaming")
     parser.add_argument("--no-color", "-n", action="store_true", help="Disable color")
-    parser.add_argument(
-        "--insecure", "-k", action="store_true",
-        help="Skip SSL certificate verification"
-    )
+    parser.add_argument("--insecure", "-k", action="store_true", help="Skip SSL")
 
     args = parser.parse_args()
     run_chat_session(args)

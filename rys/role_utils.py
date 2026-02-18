@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# 0.5: Role Loading and Prompt Construction Utilities
+# リポジトリ規約に基づき pylint の指摘事項を修正
 """
 Role Loading and Prompt Construction Utilities (v0.5)
-Adds 'Cheatsheet' injection from skills. Supports authentic TOON (Token-Oriented Object Notation).
+Adds 'Cheatsheet' injection from skills. Supports authentic TOON.
 """
-# pylint: disable=useless-return
+# pylint: disable=useless-return,broad-exception-caught
 
 import os
 import json
@@ -22,16 +24,13 @@ def load_file_content(filepath: str) -> str:
     return content
 
 
-def _get_all_skills(config_dir: str) -> List[Dict[str, Any]]:
-    """Scans skills.json and config/skills/*.json to build a complete list."""
-    all_skills = []
-    seen_ids = set()
-
-    # 1. Load from skills.json (Main Registry)
-    skills_json_path = os.path.join(config_dir, "skills.json")
-    if os.path.exists(skills_json_path):
+def _load_main_skills(config_dir: str, all_skills: List[Dict[str, Any]],
+                      seen_ids: set):
+    """Internal: Loads skills from main registry."""
+    path = os.path.join(config_dir, "skills.json")
+    if os.path.exists(path):
         try:
-            data = json.loads(load_file_content(skills_json_path))
+            data = json.loads(load_file_content(path))
             if isinstance(data, list):
                 for s in data:
                     if isinstance(s, dict) and "id" in s:
@@ -40,145 +39,137 @@ def _get_all_skills(config_dir: str) -> List[Dict[str, Any]]:
         except Exception as exc:
             print(f"Warning: Failed to parse skills.json: {exc}")
 
-    # 2. Scan config/skills/*.json for additional/missing skills
-    skills_subdir = os.path.join(config_dir, "skills")
-    if os.path.exists(skills_subdir):
-        for filename in os.listdir(skills_subdir):
+
+def _scan_skill_files(config_dir: str, all_skills: List[Dict[str, Any]],
+                      seen_ids: set):
+    """Internal: Scans individual skill JSON files."""
+    subdir = os.path.join(config_dir, "skills")
+    if os.path.exists(subdir):
+        for filename in os.listdir(subdir):
             if filename.endswith(".json"):
                 s_id = filename[:-5]
                 if s_id not in seen_ids:
-                    # Load minimal info from the skill file itself
                     try:
-                        with open(os.path.join(skills_subdir, filename), 'r', encoding='utf-8') as f:
-                            detail = json.load(f)
+                        with open(os.path.join(subdir, filename), 'r',
+                                  encoding='utf-8') as f_in:
+                            detail = json.load(f_in)
                             all_skills.append({
                                 "id": s_id,
                                 "type": "primitive",
-                                "description": detail.get("description", f"Auto-discovered skill: {s_id}"),
+                                "description": detail.get("description", f"Auto: {s_id}"),
                                 "tools": detail.get("tools", [])
                             })
                             seen_ids.add(s_id)
                     except Exception:
                         pass
-    
+
+
+def _get_all_skills(config_dir: str) -> List[Dict[str, Any]]:
+    """Scans skills.json and config/skills/*.json to build a complete list."""
+    all_skills = []
+    seen_ids = set()
+    _load_main_skills(config_dir, all_skills, seen_ids)
+    _scan_skill_files(config_dir, all_skills, seen_ids)
     return all_skills
 
 
 def load_skills_data(config_dir: str, filter_skills: Optional[List[str]]) -> Any:
     """Loads all discovered skills and filters them if requested."""
     all_skills = _get_all_skills(config_dir)
-    
-    if filter_skills is None: # Represents 'all'
-        return all_skills
-        
-    return [s for s in all_skills if s.get("id") in filter_skills]
+    res = all_skills
+    if filter_skills is not None:
+        res = [s for s in all_skills if s.get("id") in filter_skills]
+    return res
 
 
 def format_value(val: Any) -> str:
-    """Formats a single value according to TOON rules (quoting/escaping)."""
+    """Formats a single value according to TOON rules."""
     if val is None:
-        return ""
-    
-    s_val = str(val)
-    # Check if quoting is needed: contains comma, newline, or wrapping spaces
-    needs_quoting = "," in s_val or "\n" in s_val or s_val.strip() != s_val
-    
-    if needs_quoting:
-        # JSON-style escaping for quotes and newlines
-        escaped = s_val.replace('"', '\\"').replace("\n", "\\n")
-        return f'"{escaped}"'
-    
-    return s_val
+        res = ""
+    else:
+        s_val = str(val)
+        needs_quoting = "," in s_val or "\n" in s_val or s_val.strip() != s_val
+        if needs_quoting:
+            escaped = s_val.replace('"', '\\"').replace("\n", "\\n")
+            res = f'"{escaped}"'
+        else:
+            res = s_val
+    return res
+
+
+def _format_toon_list(key: str, data: list, indent: str) -> str:
+    """Internal: Formats list as TOON."""
+    if not data:
+        return f"{indent}{key}[0]{{}}:"
+
+    if all(isinstance(item, dict) for item in data) and data:
+        all_keys = []
+        for item in data:
+            for k in item.keys():
+                if k not in all_keys:
+                    all_keys.append(k)
+
+        header = f"{indent}{key}[{len(data)}]{{{','.join(all_keys)}}}:"
+        lines = [header]
+        for item in data:
+            row = [format_value(item.get(k, "")) for k in all_keys]
+            lines.append(f"{indent}{','.join(row)}")
+        res = "\n".join(lines)
+    else:
+        header = f"{indent}{key}[{len(data)}]:"
+        lines = [header]
+        for item in data:
+            lines.append(f"{indent}{format_value(item)}")
+        res = "\n".join(lines)
+    return res
 
 
 def format_as_toon(key: str, data: Any, indent_level: int = 0) -> str:
     """Converts a Python object to authentic TOON format string."""
     indent = "  " * indent_level
-    
     if isinstance(data, list):
-        if not data:
-            return f"{indent}{key}[0]{{}}:"
-        
-        # Determine common fields for tabular format if it's a list of dicts
-        if all(isinstance(item, dict) for item in data) and data:
-            # Collect all unique keys present in the items to form columns
-            all_keys = []
-            for item in data:
-                for k in item.keys():
-                    if k not in all_keys:
-                        all_keys.append(k)
-            
-            header = f"{indent}{key}[{len(data)}]{{{','.join(all_keys)}}}:"
-            lines = [header]
-            for item in data:
-                row = []
-                for k in all_keys:
-                    row.append(format_value(item.get(k, "")))
-                lines.append(f"{indent}{','.join(row)}")
-            return "\n".join(lines)
-        else:
-            # Simple list
-            header = f"{indent}{key}[{len(data)}]:"
-            lines = [header]
-            for item in data:
-                lines.append(f"{indent}{format_value(item)}")
-            return "\n".join(lines)
-            
+        res = _format_toon_list(key, data, indent)
     elif isinstance(data, dict):
         lines = []
+        c_ind = indent_level
         if key:
             lines.append(f"{indent}{key}:")
-            child_indent = indent_level + 1
-        else:
-            child_indent = indent_level
-            
+            c_ind += 1
         for k, v in data.items():
             if isinstance(v, (list, dict)):
-                lines.append(format_as_toon(k, v, child_indent))
+                lines.append(format_as_toon(k, v, c_ind))
             else:
-                lines.append(f"{'  ' * child_indent}{k}: {format_value(v)}")
-        return "\n".join(lines)
-    
+                lines.append(f"{'  ' * c_ind}{k}: {format_value(v)}")
+        res = "\n".join(lines)
     else:
-        return f"{indent}{key}: {format_value(data)}"
+        res = f"{indent}{key}: {format_value(data)}"
+    return res
 
 
 def load_skill_detail(config_dir: str, skill_id: str) -> str:
     """Loads detailed skill definition from config/skills/<id>.json as TOON."""
     path = os.path.join(config_dir, "skills", f"{skill_id}.json")
+    res = ""
     if os.path.exists(path):
         try:
-            with open(path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
+            with open(path, 'r', encoding='utf-8') as f_in:
+                data = json.load(f_in)
             ops = []
-            if "patterns" in data:
-                for p in data["patterns"]:
-                    in_type = p.get('input_type', 'Any')
-                    in_def = ""
-                    if "path" in in_type.lower() or "directory" in in_type.lower():
-                        in_def = "./"
-                        
-                    ops.append({
-                        "operation": p['task'].lower().replace(" ", "_"),
-                        "description": p['task'],
-                        "input_type": in_type,
-                        "input_default": in_def,
-                        "output_type": p.get('output_type', 'Any'),
-                        "recommended": p.get('recommended', '')
-                    })
-
-            toon_data = {
-                "skill_id": skill_id,
-                "description": f"The \"{skill_id}\" skill supports the following virtual operations.",
-                "operations": ops
-            }
-
-            content = format_as_toon("", toon_data)
-            return content
+            for p in data.get("patterns", []):
+                in_type = p.get('input_type', 'Any')
+                in_def = "./" if "path" in in_type.lower() or "dir" in in_type.lower() else ""
+                ops.append({
+                    "operation": p['task'].lower().replace(" ", "_"),
+                    "description": p['task'], "input_type": in_type,
+                    "input_default": in_def, "output_type": p.get('output_type', 'Any'),
+                    "recommended": p.get('recommended', '')
+                })
+            t_data = {"skill_id": skill_id, "operations": ops,
+                      "description": f"The \"{skill_id}\" skill virtual operations."}
+            res = format_as_toon("", t_data)
         except Exception:
-            return ""
-    return ""
+            pass
+    return res
 
 
 def load_risks_content(risks_path: str) -> str:
@@ -187,59 +178,25 @@ def load_risks_content(risks_path: str) -> str:
     try:
         json.loads(content)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Risk definition file is invalid JSON: {risks_path}") from exc
+        raise ValueError(f"Invalid JSON: {risks_path}") from exc
     return content
 
 
-def construct_system_prompt(
-    base_dir: str,
-    role_name: str,
-    skill_filter: Optional[List[str]],
-    include_skills: bool,
-    risks_file: Optional[str],
-    include_cheatsheet: bool = True
-) -> str:
-    """Combines role, constraints, skills, and risks into a system prompt using TOON."""
-    roles_dir = os.path.join(base_dir, "roles")
-    config_dir = os.path.join(base_dir, "config")
-    parts = []
+def _add_cheatsheets(config_dir: str, skills_data: list, parts: list):
+    """Internal: Adds cheatsheets to parts."""
+    cheatsheets = []
+    if isinstance(skills_data, list):
+        for skill in skills_data:
+            s_id = skill.get("id")
+            cs = skill.get("cheatsheet") or load_skill_detail(config_dir, s_id)
+            if cs:
+                cheatsheets.append(f"## Reference for [{s_id}]\n{cs}")
+    if cheatsheets:
+        parts.append("\n# Tool Reference / Cheatsheets\n" + "\n\n".join(cheatsheets))
 
-    # 1. Base Role
-    parts.append(load_file_content(os.path.join(roles_dir, f"role_{role_name}.md")))
 
-    # 3. Skills & Cheatsheets
-    if include_skills:
-        skills_data = load_skills_data(config_dir, skill_filter)
-        
-        # Add Skill Definitions (Formal IDs and descriptions)
-        if isinstance(skills_data, list) and skills_data:
-            # We omit 'cheatsheet' field in the tabular view to keep it clean
-            clean_skills = []
-            for s in skills_data:
-                item = {k: v for k, v in s.items() if k != "cheatsheet"}
-                clean_skills.append(item)
-            
-            skills_toon = format_as_toon("skills", clean_skills)
-            parts.append(f"\n# Available Skills definition\n{skills_toon}")
-
-        # Add Cheatsheets (The "Context" for ICL)
-        if include_cheatsheet:
-            cheatsheets = []
-            if isinstance(skills_data, list):
-                for skill in skills_data:
-                    s_id = skill.get("id")
-                    cs = skill.get("cheatsheet")
-                    if not cs and s_id:
-                        # Fallback to loading from skills/<id>.json
-                        cs = load_skill_detail(config_dir, s_id)
-                    
-                    if cs:
-                        cheatsheets.append(f"## Reference for [{s_id}]\n{cs}")
-            
-            if cheatsheets:
-                parts.append("\n# Tool Reference / Cheatsheets (USE THESE PATTERNS)\n" + "\n\n".join(cheatsheets))
-        
-    # 4. Risks
+def _add_risks(config_dir: str, risks_file: Optional[str], parts: list):
+    """Internal: Adds risks to parts."""
     if risks_file:
         r_path = risks_file if os.path.exists(risks_file) else os.path.join(config_dir, risks_file)
         if not os.path.exists(r_path):
@@ -247,9 +204,29 @@ def construct_system_prompt(
         if os.path.exists(r_path):
             try:
                 r_data = json.loads(load_risks_content(r_path))
-                risks_toon = format_as_toon("risks", r_data)
-                parts.append(f"\n# Risk Knowledge Base\n{risks_toon}")
+                parts.append(f"\n# Risk Knowledge Base\n{format_as_toon('risks', r_data)}")
             except Exception:
                 pass
 
+
+def construct_system_prompt(
+    base_dir: str, role_name: str, skill_filter: Optional[List[str]],
+    include_skills: bool, risks_file: Optional[str], include_cheatsheet: bool = True
+) -> str:
+    """Combines role, constraints, skills, and risks into a system prompt."""
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    roles_dir = os.path.join(base_dir, "roles")
+    config_dir = os.path.join(base_dir, "config")
+    parts = [load_file_content(os.path.join(roles_dir, f"role_{role_name}.md"))]
+
+    if include_skills:
+        skills_data = load_skills_data(config_dir, skill_filter)
+        if isinstance(skills_data, list) and skills_data:
+            clean = [{k: v for k, v in s.items() if k != "cheatsheet"} for s in skills_data]
+            parts.append(f"\n# Available Skills definition\n{format_as_toon('skills', clean)}")
+
+        if include_cheatsheet:
+            _add_cheatsheets(config_dir, skills_data, parts)
+
+    _add_risks(config_dir, risks_file, parts)
     return "\n".join(parts)

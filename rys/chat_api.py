@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# 0.2: API Communication and Data Loading
+# リポジトリ規約に基づき pylint の指摘事項を修正
 """
 API Communication and Data Loading (v0.2)
 
@@ -46,7 +48,7 @@ def build_base_url(host: str, port: Optional[str]) -> str:
     else:
         final_port = port_arg if port_arg else default_port
         final_host_part = f"{host_part}:{final_port}"
-    
+
     return f"{protocol}://{final_host_part}"
 
 def verify_connection(base_url: str, timeout: int = 2, insecure: bool = False) -> None:
@@ -66,37 +68,36 @@ def verify_connection(base_url: str, timeout: int = 2, insecure: bool = False) -
 
 def encode_image(file_path: str) -> Optional[str]:
     """Encodes an image file to a base64 string with data URI scheme."""
-    if not os.path.exists(file_path):
-        return None
-    mime_type, _ = mimetypes.guess_type(file_path)
-    if not mime_type:
-        mime_type = "application/octet-stream"
-    try:
-        with open(file_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-            return f"data:{mime_type};base64,{encoded_string}"
-    except Exception:
-        return None
+    res = None
+    if os.path.exists(file_path):
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+        try:
+            with open(file_path, "rb") as image_file:
+                encoded = base64.b64encode(image_file.read()).decode('utf-8')
+                res = f"data:{mime_type};base64,{encoded}"
+        except Exception:
+            pass
+    return res
 
 def normalize_message(msg: Dict[str, Any]) -> Dict[str, Any]:
     """Ensures message has standard 'role' and 'content' keys."""
-    # Allow content to be list (for multimodal) or string
-    result = {"role": "user", "content": msg.get("content", "")}
+    res = {"role": "user", "content": msg.get("content", "")}
     if "role" in msg and "content" in msg:
-        result = msg
+        res = msg
     else:
         for role_key in ["user", "system", "assistant", "agent"]:
             if role_key in msg:
                 norm_role = "assistant" if role_key == "agent" else role_key
-                result = {"role": norm_role, "content": msg[role_key]}
+                res = {"role": norm_role, "content": msg[role_key]}
                 break
-    
-    # Ensure content is string only if it's not a list (to keep objects for vision)
-    if not isinstance(result["content"], list) and not isinstance(result["content"], str):
-         result["content"] = str(result["content"])
 
-    return result
+    if not isinstance(res["content"], list) and not isinstance(res["content"], str):
+        res["content"] = str(res["content"])
+    return res
 
+# pylint: disable=too-many-locals
 def load_session_data(
     file_path: Optional[str],
     json_str: Optional[str]
@@ -113,12 +114,12 @@ def load_session_data(
         sys.exit(1)
 
     if not raw_data:
-        return []
-
-    if not isinstance(raw_data, list):
-        raw_data = [raw_data]
-
-    return [normalize_message(m) for m in raw_data]
+        res = []
+    else:
+        if not isinstance(raw_data, list):
+            raw_data = [raw_data]
+        res = [normalize_message(m) for m in raw_data]
+    return res
 
 def _parse_stream_line(line_str: str) -> Optional[str]:
     """Parses a single line from the SSE stream."""
@@ -135,11 +136,8 @@ def _parse_stream_line(line_str: str) -> Optional[str]:
     return content
 
 def stream_chat_completion(
-    url: str,
-    model: str,
-    messages: List[Dict[str, Any]],
-    colors: TerminalColors,
-    insecure: bool = False
+    url: str, model: str, messages: List[Dict[str, Any]],
+    colors: TerminalColors, insecure: bool = False
 ) -> Iterator[str]:
     """Generates streaming response from the API."""
     headers = {"Content-Type": "application/json", "Authorization": "Bearer not-needed"}
@@ -153,24 +151,22 @@ def stream_chat_completion(
             for line in response:
                 content = _parse_stream_line(line.decode("utf-8").strip())
                 if content:
-                    # Clean up special tokens
-                    for token in ["<end_of_turn>", "<start_of_turn>", "<|file_separator|>", "<|end_of_text|>", "<|im_end|>"]:
+                    tokens = ["<end_of_turn>", "<start_of_turn>", "<|file_separator|>",
+                              "<|end_of_text|>", "<|im_end|>"]
+                    for token in tokens:
                         content = content.replace(token, "")
                     yield content
                 elif line.decode("utf-8").strip() == "data: [DONE]":
                     break
     except urllib.error.URLError as exc:
         yield f"\n{colors.wrap_error(f'[Connection Error] {exc}')}"
-    except Exception as exc: # pylint: disable=broad-exception-caught
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         yield f"\n{colors.wrap_error(f'[Error] {exc}')}"
     return None
 
 def call_embedding_api(
-    url: str,
-    model: str,
-    input_text: str,
-    insecure: bool = False,
-    dimensions: Optional[int] = None
+    url: str, model: str, input_text: str,
+    insecure: bool = False, dimensions: Optional[int] = None
 ) -> Dict[str, Any]:
     """Calls the embedding API and returns the response."""
     headers = {"Content-Type": "application/json", "Authorization": "Bearer not-needed"}
@@ -183,7 +179,7 @@ def call_embedding_api(
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(req, context=ctx) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except Exception as exc: # pylint: disable=broad-exception-caught
-        return {"error": str(exc)}
-    
+            res = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        res = {"error": str(exc)}
+    return res
