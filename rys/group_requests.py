@@ -123,6 +123,13 @@ def _group_by_skill(all_topics: List[Dict[str, str]]) -> Dict[str, List[Dict[str
             skill_groups.setdefault(t["skill"], []).append(t)
     return skill_groups
 
+def _normalize_topic_id(tid: str) -> str:
+    """Normalizes variations like 'TOP1' or '1' to 'TOPIC1'."""
+    match = re.search(r"(\d+)", tid)
+    if match:
+        return f"TOPIC{match.group(1)}"
+    return tid
+
 def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
                              idontknow_topics: List[Dict[str, str]],
                              host: str, port: str, model: str) -> List[Dict[str, Any]]:
@@ -143,7 +150,8 @@ def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
                 llm_results = [f"REQUEST: {t['id']}" for t in topics]
 
             for req_str in llm_results:
-                ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
+                raw_ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
+                ids = [_normalize_topic_id(rid) for rid in raw_ids if rid]
                 if ids:
                     raw_requests.append({"skill": skill, "topic_ids": ids})
     return raw_requests
@@ -152,7 +160,14 @@ def _format_final_requests(raw_requests: List[Dict[str, Any]],
                            topic_map: Dict[str, Dict[str, str]]) -> List[Dict[str, Any]]:
     """Final Step: Sort and Number Requests with Titles."""
     def get_min_topic_idx(req):
-        return min(int(tid.replace("TOPIC", "")) for tid in req["topic_ids"])
+        indices = []
+        for tid in req["topic_ids"]:
+            match = re.search(r"(\d+)", tid)
+            if match:
+                indices.append(int(match.group(1)))
+            else:
+                indices.append(9999)
+        return min(indices) if indices else 9999
 
     raw_requests.sort(key=get_min_topic_idx)
 

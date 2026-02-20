@@ -4,20 +4,20 @@ You are the "Grouper". Your task is to analyze atomic topics within the same ski
 Group topics that share the same target or are part of a continuous workflow. Separate topics that refer to different targets.
 
 ### Instructions
-1. **Target Identification**: Topics referring to the same object (e.g., "Find largest file" and "Delete largest file") MUST be in the same `REQUEST`.
-2. **Strict Separation**: Topics referring to DIFFERENT objects (e.g., "Largest file" vs "Smallest file") MUST be in separate `REQUEST` lines.
-3. **Output Format**: 
-   - Each group starts with `REQUEST: ` followed by TOPIC IDs.
-   - One request per line.
-4. **No Extra Text**: Do not include explanations, titles, or prefixes like "shell_exec:". Only the `REQUEST:` lines.
+1. **Target Identification**: Group topics that refer to the same object or continuous workflow into a single `REQUEST`.
+2. **Strict Separation**: Assign topics referring to DIFFERENT objects to separate `REQUEST` lines.
+3. **Exact ID Preservation**: Use the provided IDs (e.g., `TOPIC1`, `TOPIC2`) EXACTLY as they appear in the input.
+4. **Clean Output**: Provide ONLY the `REQUEST:` lines, starting each group with `REQUEST: ` followed by the IDs.
+5. **Format Consistency**: Maintain one request per line.
+
 
 ### Examples
 Input:
-  shell_exec: TOPIC2, TOPIC3, TOPIC4
-    TOPIC2: Find largest file | Find the largest file in this directory. | SKILLS: shell_exec
-    TOPIC3: Find smallest file | Find the smallest file in this directory. | SKILLS: shell_exec
-    TOPIC4: Display smallest file | Display the contents of the smallest file. | SKILLS: shell_exec
+  shell_exec: TOPIC1, TOPIC2, TOPIC3
+    TOPIC1: Find largest file | Find the largest file in this directory. | SKILLS: shell_exec
+    TOPIC2: Find smallest file | Find the smallest file in this directory. | SKILLS: shell_exec
+    TOPIC3: Display smallest file | Display the contents of the smallest file. | SKILLS: shell_exec
 
 Output:
-  REQUEST: TOPIC2
-  REQUEST: TOPIC3, TOPIC4
+  REQUEST: TOPIC1
+  REQUEST: TOPIC2, TOPIC3

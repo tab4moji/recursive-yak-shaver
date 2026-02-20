@@ -1,8 +1,10 @@
 _() {
     echo "$1"
-    # RYS_LLM_HOST=http://192.168.0.25 ./rys/main.bash "$1" --from=5,6 --auto
-    RYS_LLM_HOST=http://192.168.0.25 ./rys/main.bash "$1" --auto
-    #RYS_LLM_HOST=http://192.168.32.67 ./rys/main.bash "$1" --from=5,6 --auto
+    # local RYS_LLM_HOST=http://192.168.0.25
+    # local RYS_LLM_HOST=http://192.168.32.67
+    local RYS_LLM_HOST=http://192.168.32.86
+    # local RYS_LLM_HOST=http://172.31.240.56
+    RYS_LLM_HOST=http://192.168.32.86 ./rys/main.bash "$1" --from=5,6 --auto
 }
 
 _ "このディレクトリで一番大きい python ファイルに対して pylint を実行して。"
