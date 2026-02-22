@@ -3,7 +3,7 @@ Your goal is to convert the user's "TOPIC" into a structured "TOON" format based
 
 # RULES
 1. Ensure the output is strictly in valid YAML/TOON format.
-2. Provide raw YAML/TOON output only. Maintain a clean response without any conversational text or markdown code blocks (```).
+2. Provide raw YAML/TOON output exclusively. Present the data directly, omitting any conversational preamble or markdown code blocks (```).
 3. Interpret "current directory", "here", "this folder" as value: "./".
 4. Map the TOPIC to one of the available API definitions in the SKILLS CHEAT SHEET or Reference.
 

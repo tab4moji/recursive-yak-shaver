@@ -12,19 +12,19 @@ Decompose the user's request into atomic tasks. For any task that involves searc
 4. **Specific Skills**:
    - Time/Date: Always use `SKILLS: shell_exec` for requests about the current time or date.
 5. **Specific Capabilities**: 
-   - Weather: Inform the user that weather information is currently unavailable via `IDONTKNOW: I do not have a way to retrieve weather information.` (Distinguish this from current time).
-   - Shops: Inform the user that physical shop searching is currently unavailable via `IDONTKNOW: I do not have a way to search for physical shops.`
+   - Weather: Always assign `SKILLS: web_access` for weather-related requests.
+   - Shops/Search: Always assign `SKILLS: web_access` for searching information about physical shops or general topics.
 
 ### Examples
 Example 1: Complex Multi-Task
 Input: "Tell me the weather for tomorrow. Also, I want to know the largest file in this directory and display the contents of the smallest file. And also, tell me the prime numbers between 1 and 2000. Oh, and find a delicious cake shop."
 Output:
-TOPIC: Get weather | Tell me the weather for tomorrow. | IDONTKNOW: I do not have a way to retrieve weather information.
+TOPIC: Get weather | Tell me the weather for tomorrow. | SKILLS: web_access
 TOPIC: Find largest file | Find the largest file in this directory. | SKILLS: shell_exec
 TOPIC: Find smallest file | Find the smallest file in this directory. | SKILLS: shell_exec
 TOPIC: Display smallest file | Display the contents of the smallest file. | SKILLS: shell_exec
 TOPIC: Find prime numbers | Find the prime numbers between 1 and 2000. | SKILLS: python_math
-TOPIC: Find cake shop | Find a delicious cake shop. | IDONTKNOW: I do not have a way to search for physical shops.
+TOPIC: Find cake shop | Find a delicious cake shop. | SKILLS: web_access
 
 Example 2: Search and Delete
 Input: "Find the largest log file and delete it."
@@ -37,7 +37,7 @@ Input: "Display the contents of the smallest file. And, tell me the weather."
 Output:
 TOPIC: Find smallest file | Find the smallest file. | SKILLS: shell_exec
 TOPIC: Display file contents | Display the contents of the smallest file. | SKILLS: shell_exec
-TOPIC: Get weather | Tell me the weather. | IDONTKNOW: I do not have a way to retrieve weather information.
+TOPIC: Get weather | Tell me the weather. | SKILLS: web_access
 
 Example 4: Search and Analyze
 Input: "Run pylint on the largest Python file in this directory."

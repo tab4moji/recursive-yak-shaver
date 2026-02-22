@@ -4,12 +4,19 @@
   "description": "Tools for fetching online data and web content.",
   "patterns": [
     {
-      "task": "Retrieve weather information for a specific city",
-      "recommended": "curl -s \"wttr.in/Tokyo?0q\""
+      "task": "Fetch current weather for a city",
+      "recommended": "curl -s \"wttr.in/__CITY__?0q\"",
+      "notes": "Replace __CITY__ with the name of the city (e.g., Tokyo, London)."
     },
     {
-      "task": "Perform a search for information using DuckDuckGo API",
-      "recommended": "curl -s \"https://api.duckduckgo.com/?q=cake+shop+nearby&format=json\""
+      "task": "Search for specific information using DuckDuckGo",
+      "recommended": "curl -s \"https://api.duckduckgo.com/?q=__QUERY__&format=json\"",
+      "notes": "Replace __QUERY__ with the search term (e.g., cake+shop+Tokyo)."
+    },
+    {
+      "task": "General web search using curl",
+      "recommended": "curl -s \"https://www.google.com/search?q=__QUERY__\"",
+      "notes": "Use this for broad searches."
     }
   ]
 }
