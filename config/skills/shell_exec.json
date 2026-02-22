@@ -27,15 +27,15 @@
     },
     {
       "task": "Identify the current date and time",
-      "recommended": "now=$(date '+%Y-%m-%d %H:%M:%S')",
+      "recommended": "content=$(date '+%Y-%m-%d %H:%M:%S')",
       "output_type": "DateTime",
-      "binding": "now"
+      "binding": "content"
     },
     {
       "task": "Retrieve the current directory path",
-      "recommended": "current_path=$(pwd)",
+      "recommended": "path=$(pwd)",
       "output_type": "Path",
-      "binding": "current_path"
+      "binding": "path"
     }
   ]
 }

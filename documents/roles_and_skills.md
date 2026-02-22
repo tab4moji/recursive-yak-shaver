@@ -27,3 +27,10 @@ skills[3]{id,type,description}:
 python_math,primitive,Advanced mathematical calculations...
 shell_exec,primitive,Experimental shell execution tools...
 ```
+
+## 標準バインディング (Standardized Bindings)
+フェーズ間でのデータの受け渡しを確実にするため、各スキルの出力バインディング名は以下の 2 種類に制限される。
+- **`path`**: ファイルやディレクトリの場所を表す出力に使用。
+- **`content`**: テキスト、計算結果、ステータス、またはその他の汎用データ出力に使用。
+
+この標準化により、後続のフェーズ（例: Coder や Executor）がどのバインディングを参照すべきか迷うことがなくなり、パイプライン全体の堅牢性が向上している。

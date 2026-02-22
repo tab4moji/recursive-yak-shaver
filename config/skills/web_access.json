@@ -5,18 +5,21 @@
   "patterns": [
     {
       "task": "Fetch current weather for a city",
-      "recommended": "curl -s \"wttr.in/__CITY__?0q\"",
-      "notes": "Replace __CITY__ with the name of the city (e.g., Tokyo, London)."
+      "recommended": "content=$(curl -s \"wttr.in/__CITY__?0q\")",
+      "output_type": "Content",
+      "binding": "content"
     },
     {
       "task": "Search for specific information using DuckDuckGo",
-      "recommended": "curl -s \"https://api.duckduckgo.com/?q=__QUERY__&format=json\"",
-      "notes": "Replace __QUERY__ with the search term (e.g., cake+shop+Tokyo)."
+      "recommended": "content=$(curl -s \"https://api.duckduckgo.com/?q=__QUERY__&format=json\")",
+      "output_type": "Content",
+      "binding": "content"
     },
     {
       "task": "General web search using curl",
-      "recommended": "curl -s \"https://www.google.com/search?q=__QUERY__\"",
-      "notes": "Use this for broad searches."
+      "recommended": "content=$(curl -s \"https://www.google.com/search?q=__QUERY__\")",
+      "output_type": "Content",
+      "binding": "content"
     }
   ]
 }

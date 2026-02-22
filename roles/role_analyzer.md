@@ -11,7 +11,9 @@ You are the "Analyzer". Define I/O types and bindings.
    - Example: `{ "type": "map", "value": { "min": 1, "max": 2000 } }`
 2. **Display Action (Value Output)**: Any "display" or "show contents" action results in an output of type `value` (representing the text content).
 3. **Context Binding**: Use `ref:TOPIC<N>.<binding>` for dependencies within the same request. For the first topic in a request, use a literal value (like `./` for paths) or standard information.
-4. **Consistency**: Use short, clear binding names (e.g., `path`, `content`, `primes`).
+4. **Binding Standard (Mandatory)**: Assign exactly one of the following binding names to the output to ensure script compatibility:
+   - Use `path` for any output representing a file or directory location.
+   - Use `content` for any other output representing data, text, or calculated results.
 
 ### Output Format
 Provide raw JSON output only. Ensure the output contains only the JSON object without any additional text or markdown formatting.
