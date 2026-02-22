@@ -4,35 +4,35 @@
   "description": "Standard tools for file processing and system operations.",
   "patterns": [
     {
-      "task": "Find the largest python file path",
+      "task": "Identify the largest Python file path",
       "recommended": "path=$(find . -type f -name \"*.py\" -exec du -b {} + | sort -rn | head -n 1 | cut -f2-)",
       "output_type": "Path"
     },
     {
-      "task": "Find the smallest file path",
+      "task": "Identify the smallest file path",
       "recommended": "path=$(find . -type f -exec du -b {} + | sort -n | head -n 1 | cut -f2-)",
       "output_type": "Path"
     },
     {
-      "task": "Run pylint on a specified path",
+      "task": "Execute pylint on the specified path",
       "recommended": "content=$(pylint \"$path\")",
       "input_type": "Path",
       "output_type": "Content"
     },
     {
-      "task": "Display the contents of a specified path",
+      "task": "Access and display the contents of the specified path",
       "recommended": "content=$(cat \"$path\")",
       "input_type": "Path",
       "output_type": "Content"
     },
     {
-      "task": "Identify the current date and time",
+      "task": "Retrieve the current date and time",
       "recommended": "content=$(date '+%Y-%m-%d %H:%M:%S')",
       "output_type": "DateTime",
       "binding": "content"
     },
     {
-      "task": "Retrieve the current directory path",
+      "task": "Identify the current directory path",
       "recommended": "path=$(pwd)",
       "output_type": "Path",
       "binding": "path"
