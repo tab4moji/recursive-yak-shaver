@@ -1,26 +1,26 @@
-# UNIVERSAL LOGIC TRUTHS (MANDATORY)
+# UNIVERSAL LOGIC TRUTHS: STANDARD PRINCIPLES
 
 1. **NUMERIC SORTING & EXTREMES**:
-   - **To find the SMALLEST (Tiniest/Minimum)**:
+   - **To identify the SMALLEST (Minimum) value**:
      - ACTION: Sort numbers from LOW to HIGH.
      - COMMAND: `sort -n` (Ascending).
      - RESULT: The SMALLEST value is now on the FIRST line.
-     - SELECTOR: `head -n 1` (Takes the first line of the list. Acts exclusively on the stream).
-   - **To find the LARGEST (Biggest/Maximum)**:
+     - SELECTOR: Use `head -n 1` to select the top record from the stream.
+   - **To identify the LARGEST (Maximum) value**:
      - ACTION: Sort numbers from HIGH to LOW.
      - COMMAND: `sort -rn` (Reverse Numeric).
      - RESULT: The LARGEST value is now on the FIRST line.
-     - SELECTOR: `head -n 1`.
+     - SELECTOR: Use `head -n 1` to select the top record.
 
-2. **DATA CLEANING (THE TAB RULE)**:
-   - Output from `du -b` looks like: `1234\t./path/to/file` (Size followed by Path).
-   - If the next step requires a file path (like `cat`), you MUST remove the size prefix first.
-   - COMMAND: `cut -f2-` (This strips the first column and keeps the rest).
+2. **DATA CLEANING: THE TAB RULE**:
+   - Output from `du -b` typically appears as: `1234\t./path/to/file` (Size followed by Path).
+   - When the subsequent step requires a file path (such as `cat`), always remove the size prefix first.
+   - COMMAND: Use `cut -f2-` to strip the first column and preserve the path.
 
 3. **CONTENT DISPLAY FLOW**:
-   - Step A: `find . -type f` (Get Paths)
-   - Step B: `du -b "$1"` (Get Size + Path)
+   - Step A: `find . -type f` (Identify Paths)
+   - Step B: `du -b "$1"` (Retrieve Size and Path)
    - Step C: `sort -n` (Order by Size)
-   - Step D: `head -n 1` (Top Record)
-   - Step E: `cut -f2-` (Clean Path Only)
-   - Step F: `cat "$1"` (Read Content)
+   - Step D: `head -n 1` (Select Top Record)
+   - Step E: `cut -f2-` (Ensure the Path is Clean)
+   - Step F: `cat "$1"` (Access the Content)

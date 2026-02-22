@@ -1,12 +1,13 @@
 _() {
     echo "$1"
-    # local RYS_LLM_HOST=http://192.168.0.25
-    # local RYS_LLM_HOST=http://192.168.32.67
-    local RYS_LLM_HOST=http://192.168.32.86
-    # local RYS_LLM_HOST=http://172.31.240.56
-    RYS_LLM_HOST=http://192.168.32.86 ./rys/main.bash "$1" --from=5,6 --auto
+    local _RYS_LLM=http://192.168.0.25
+    # local _RYS_LLM=http://192.168.32.67
+    # local _RYS_LLM=http://192.168.32.86
+    RYS_LLM_HOST=${_RYS_LLM} ./rys/main.bash "$1" --from=5,6 --auto
 }
 
+_ "このディレクトリのフルパスを調べて."
+_ "今の時間を教えて。"
 _ "このディレクトリで一番大きい python ファイルに対して pylint を実行して。"
 _ "このディレクトリのフルパスを調べて."
 _ "今の時間を教えて。"

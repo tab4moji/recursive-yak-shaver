@@ -1,14 +1,14 @@
 {
   "id": "web_access",
   "name": "Web Access (HTTP)",
-  "description": "Tools for fetching online data.",
+  "description": "Tools for fetching online data and web content.",
   "patterns": [
     {
-      "task": "Fetch weather for a city (wttr.in)",
+      "task": "Retrieve weather information for a specific city",
       "recommended": "curl -s \"wttr.in/Tokyo?0q\""
     },
     {
-      "task": "Search for local info (example)",
+      "task": "Perform a search for information using DuckDuckGo API",
       "recommended": "curl -s \"https://api.duckduckgo.com/?q=cake+shop+nearby&format=json\""
     }
   ]

@@ -1,18 +1,18 @@
 {
   "id": "python_script",
   "name": "Python Scripting",
-  "description": "General purpose automation.",
+  "description": "General purpose automation and logic execution.",
   "patterns": [
     {
-      "task": "Process text with logic",
+      "task": "Process input text using Python logic",
       "recommended": "python3 -c \"import sys; print(sys.stdin.read().upper())\""
     },
     {
-      "task": "Multi-line script logic",
-      "recommended": "result=$(python3 << 'EOF'\nimport sys\nfor line in sys.stdin:\n    # ... complex logic ...\n    print(line.strip())\nEOF\n)"
+      "task": "Execute complex multi-line logic",
+      "recommended": "result=$(python3 << 'EOF'\nimport sys\nfor line in sys.stdin:\n    # Implement complex logic here\n    print(line.strip())\nEOF\n)"
     },
     {
-      "task": "Run static analysis",
+      "task": "Perform static analysis using pylint",
       "recommended": "result=$(pylint \"$1\")"
     }
   ]
