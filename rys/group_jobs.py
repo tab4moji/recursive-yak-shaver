@@ -73,7 +73,8 @@ def run_grouper_llm(skill: str, tasks: List[Dict[str, str]],
         print("\nParsed Grouping:")
         for line in result.stdout.strip().split('\n'):
             line = line.strip()
-            if line.startswith("Job:"):
+            # Accept both "Job:" and "REQUEST:" (flexible format)
+            if re.match(r"^(Job|REQUEST|TaskGroup)\s*:", line, re.IGNORECASE):
                 print(f"  {line}")
                 output_lines.append(line)
         res = output_lines
@@ -150,7 +151,9 @@ def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
                 llm_results = [f"Job: {t['id']}" for t in tasks]
 
             for job_str in llm_results:
-                raw_ids = [id_str.strip() for id_str in job_str.replace("Job:", "").split(",")]
+                # Strip prefix (Job:, REQUEST:, etc.) using regex
+                ids_part = re.sub(r"^(Job|REQUEST|TaskGroup)\s*:\s*", "", job_str, flags=re.IGNORECASE)
+                raw_ids = [id_str.strip() for id_str in ids_part.split(",")]
                 ids = [_normalize_task_id(rid) for rid in raw_ids if rid]
                 if ids:
                     raw_jobs.append({"skill": skill, "task_ids": ids})
