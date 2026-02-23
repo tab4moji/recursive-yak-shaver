@@ -81,13 +81,20 @@ def main():
                 raw_info = task_map.get(tid, {})
 
                 # Merge: Analysis + Raw Data
-                integrated_tasks.append({
+                merged_task = {
                     "id": tid,
                     "title": raw_info.get("title", "Unknown"),
                     "raw": raw_info.get("raw", ""),
                     "input": a_task.get("input"),
-                    "output": a_task.get("output")
-                })
+                    "output": a_task.get("output"),
+                    "loop": a_task.get("loop", False)
+                }
+                # Keep any other fields from analysis (like hints)
+                for k, v in a_task.items():
+                    if k not in merged_task:
+                        merged_task[k] = v
+                
+                integrated_tasks.append(merged_task)
 
             structured_job = {
                 "job_id": job["id"],

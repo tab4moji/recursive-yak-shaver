@@ -4,38 +4,54 @@
   "description": "Standard tools for file processing and system operations.",
   "patterns": [
     {
-      "task": "Identify the largest Python file path",
-      "recommended": "path=$(find . -type f -name \"*.py\" -exec du -b {} + | sort -rn | head -n 1 | cut -f2-)",
+      "task": "List all files in the directory",
+      "recommended": "find \"${input}\" -type f | mapfile -t script_output",
+      "output_type": "List"
+    },
+    {
+      "task": "List files with specific extension",
+      "recommended": "find \"${input}\" -type f -name \"${input_filename}\" | mapfile -t script_output",
+      "output_type": "List"
+    },
+    {
+      "task": "Calculate file size (with path)",
+      "recommended": "du -b \"${input}\" | sed 's/\\t/ /' | read -r script_output",
+      "input_type": "Path",
+      "output_type": "Value"
+    },
+    {
+      "task": "Identify the largest file from the list",
+      "recommended": "echo \"${input}\" | xargs du -b | sort -nr | head -n 1 | cut -d' ' -f2 | read -r script_output",
+      "input_type": "List",
       "output_type": "Path"
     },
     {
-      "task": "Identify the smallest file path",
-      "recommended": "path=$(find . -type f -exec du -b {} + | sort -n | head -n 1 | cut -f2-)",
+      "task": "Identify the smallest file from the list",
+      "recommended": "echo \"${input}\" | xargs du -b | sort -n | head -n 1 | cut -d' ' -f2 | read -r script_output",
+      "input_type": "List",
       "output_type": "Path"
     },
     {
-      "task": "Execute pylint on the specified path",
-      "recommended": "content=$(pylint \"$path\")",
+      "task": "Execute pylint on the specified file",
+      "recommended": "pylint \"${input}\" | read -r -d '' script_output || true",
       "input_type": "Path",
       "output_type": "Content"
     },
     {
-      "task": "Access and display the contents of the specified path",
-      "recommended": "content=$(cat \"$path\")",
+      "task": "Show contents of the specified file",
+      "recommended": "cat \"${input}\" | read -r -d '' script_output || true",
       "input_type": "Path",
       "output_type": "Content"
     },
     {
       "task": "Retrieve the current date and time",
-      "recommended": "content=$(date '+%Y-%m-%d %H:%M:%S')",
-      "output_type": "DateTime",
-      "binding": "content"
+      "recommended": "date '+%Y-%m-%d %H:%M:%S' | read -r script_output",
+      "output_type": "DateTime"
     },
     {
       "task": "Identify the current directory path",
-      "recommended": "path=$(pwd)",
-      "output_type": "Path",
-      "binding": "path"
+      "recommended": "pwd | read -r script_output",
+      "output_type": "Path"
     }
   ]
 }
