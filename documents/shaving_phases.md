@@ -7,12 +7,12 @@ The Recursive Yak Shaver (RYS) operates through a 6-phase pipeline, transforming
 
 | Phase | Name | Description | Role / Script |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | [Translation](./phases/phase1_translation.md) | Translates and normalizes user prompt. | `translater` / `phase1_translate.py` |
-| **Phase 2** | [Dispatch](./phases/phase2_dispatch.md) | Breaks prompt into atomic tasks (tasks) and assigns skills. | `dispatcher` / `phase2_dispatch.py` |
-| **Phase 3** | [Grouping](./phases/phase3_grouping.md) | Groups tasks into executable jobs and sorts by dependency. | `grouper` / `phase3_group.py` |
-| **Phase 4** | [Processing](./phases/phase4_processing.md) | Analyzes detailed I/O requirements for each job. | `analyzer` / `phase4_job_loop.py` |
-| **Phase 5** | [Generation](./phases/phase5_generation.md) | Generates executable bash scripts for each task using code snippets. | `coder` / `phase5_generate.py` |
-| **Phase 6** | [Execution](./phases/phase6_execution.md) | Safely executes the generated scripts and reports results. | `phase6_execute.py` |
+| **Phase 1** | [Translation](./phases/phase1_translation.md) | Translates and normalizes user prompt. | `translater` / `rys/phase1_translate.py` |
+| **Phase 2** | [Dispatch](./phases/phase2_dispatch.md) | Breaks prompt into atomic tasks (tasks) and assigns skills. | `dispatcher` / `rys/phase2_dispatch.py` |
+| **Phase 3** | [Grouping](./phases/phase3_grouping.md) | Groups tasks into executable jobs and sorts by dependency. | `grouper` / `rys/phase3_group.py` |
+| **Phase 4** | [Processing](./phases/phase4_processing.md) | Analyzes detailed I/O requirements for each job. | `analyzer` / `rys/phase4_request_loop.py` |
+| **Phase 5** | [Generation](./phases/phase5_generation.md) | Generates executable bash scripts for each task using code snippets. | `coder` / `rys/phase5_generate.py` |
+| **Phase 6** | [Execution](./phases/phase6_execution.md) | Safely executes the generated scripts and reports results. | `rys/phase6_execute.py` |
 
 ## Pipeline Flow
 1. **Input**: User prompt (e.g., "What's the weather in Tokyo and tell me a joke about it.")

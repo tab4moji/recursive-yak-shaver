@@ -19,12 +19,12 @@ RYS は、タスクの実行を 6 つの独立したフェーズに分割して�
 1. **Affirmative Control (肯定説明)**: 全てのロール指示およびチートシートにおいて、否定的な表現を排除し、肯定的な指示（「～せよ」「～を維持せよ」等）のみを用いる。これにより、LLMの指示追従性と実行の安定性を最大化する。
 2. **Pipeline Architecture**: 入力から実行までを 6 つのフェーズに分ける。
 2. **Role-Based Reasoning**: 各フェーズは、特定の役割 (`roles/*.md`) を持ったエージェントが担当する。
-3. **Skill-Oriented Dispatching**: 実行可能な操作を「スキル」(`config/skills.json`) として定義し、動的にプロンプトへ注入する。
+3. **Skill-Oriented Dispatching**: 実行可能な操作を「スキル」(`skills/skills.json`) として定義し、動的にプロンプトへ注入する。
 4. **TOON (Token-Oriented Object Notation)**: トークン効率を重視した独自の構造化データ表現を用い、LLMとのやり取りを最適化する。
 
 ## コンポーネント構造
 - `rys/main.bash`: 各フェーズを順次実行するオーケストレーター。
 - `rys/phase*.py`: 各フェーズのロジック。
 - `roles/*.md`: 各エージェントのシステムプロンプト。
-- `config/*.json`: スキル、リスク管理、設定情報。
+- `skills/*.json`: スキル、リスク管理、設定情報。
 - `~/.cache/rys/`: フェーズ間のキャッシュ（JSON形式）。XDG Base Directory 規格に準拠。

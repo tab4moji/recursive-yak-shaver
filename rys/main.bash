@@ -102,7 +102,7 @@ CONFIG_HASH=$(python3 -c '
 import json, glob, os, hashlib
 def get_norm(path):
     with open(path, "r") as f: return json.dumps(json.load(f), sort_keys=True, separators=(",", ":"))
-files = ["config/skills.json"] + sorted(glob.glob("config/skills/*.json"))
+files = ["skills/skills.json"] + sorted(glob.glob("skills/cheatsheets/*.json"))
 contents = "".join(get_norm(f) for f in files if os.path.exists(f))
 print(hashlib.md5(contents.encode()).hexdigest()[:8])
 ')

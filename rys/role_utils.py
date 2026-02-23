@@ -24,10 +24,10 @@ def load_file_content(filepath: str) -> str:
     return content
 
 
-def _load_main_skills(config_dir: str, all_skills: List[Dict[str, Any]],
+def _load_main_skills(skills_dir: str, all_skills: List[Dict[str, Any]],
                       seen_ids: set):
     """Internal: Loads skills from main registry."""
-    path = os.path.join(config_dir, "skills.json")
+    path = os.path.join(skills_dir, "skills.json")
     if os.path.exists(path):
         try:
             data = json.loads(load_file_content(path))
@@ -40,10 +40,10 @@ def _load_main_skills(config_dir: str, all_skills: List[Dict[str, Any]],
             print(f"Warning: Failed to parse skills.json: {exc}")
 
 
-def _scan_skill_files(config_dir: str, all_skills: List[Dict[str, Any]],
+def _scan_skill_files(skills_dir: str, all_skills: List[Dict[str, Any]],
                       seen_ids: set):
     """Internal: Scans individual skill JSON files."""
-    subdir = os.path.join(config_dir, "skills")
+    subdir = os.path.join(skills_dir, "cheatsheets")
     if os.path.exists(subdir):
         for filename in os.listdir(subdir):
             if filename.endswith(".json"):
@@ -64,18 +64,18 @@ def _scan_skill_files(config_dir: str, all_skills: List[Dict[str, Any]],
                         pass
 
 
-def _get_all_skills(config_dir: str) -> List[Dict[str, Any]]:
-    """Scans skills.json and config/skills/*.json to build a complete list."""
+def _get_all_skills(skills_dir: str) -> List[Dict[str, Any]]:
+    """Scans skills.json and skills/skills/*.json to build a complete list."""
     all_skills = []
     seen_ids = set()
-    _load_main_skills(config_dir, all_skills, seen_ids)
-    _scan_skill_files(config_dir, all_skills, seen_ids)
+    _load_main_skills(skills_dir, all_skills, seen_ids)
+    _scan_skill_files(skills_dir, all_skills, seen_ids)
     return all_skills
 
 
-def load_skills_data(config_dir: str, filter_skills: Optional[List[str]]) -> Any:
+def load_skills_data(skills_dir: str, filter_skills: Optional[List[str]]) -> Any:
     """Loads all discovered skills and filters them if requested."""
-    all_skills = _get_all_skills(config_dir)
+    all_skills = _get_all_skills(skills_dir)
     res = all_skills
     if filter_skills is not None:
         res = [s for s in all_skills if s.get("id") in filter_skills]
@@ -146,9 +146,9 @@ def format_as_toon(key: str, data: Any, indent_level: int = 0) -> str:
     return res
 
 
-def load_skill_detail(config_dir: str, skill_id: str) -> str:
-    """Loads detailed skill definition from config/skills/<id>.json as TOON."""
-    path = os.path.join(config_dir, "skills", f"{skill_id}.json")
+def load_skill_detail(skills_dir: str, skill_id: str) -> str:
+    """Loads detailed skill definition from skills/cheatsheets/<id>.json as TOON."""
+    path = os.path.join(skills_dir, "cheatsheets", f"{skill_id}.json")
     res = ""
     if os.path.exists(path):
         try:
@@ -182,25 +182,25 @@ def load_risks_content(risks_path: str) -> str:
     return content
 
 
-def _add_cheatsheets(config_dir: str, skills_data: list, parts: list):
+def _add_cheatsheets(skills_dir: str, skills_data: list, parts: list):
     """Internal: Adds cheatsheets to parts."""
     cheatsheets = []
     if isinstance(skills_data, list):
         for skill in skills_data:
             s_id = skill.get("id")
-            cs = skill.get("cheatsheet") or load_skill_detail(config_dir, s_id)
+            cs = skill.get("cheatsheet") or load_skill_detail(skills_dir, s_id)
             if cs:
                 cheatsheets.append(f"## Reference for [{s_id}]\n{cs}")
     if cheatsheets:
         parts.append("\n# Tool Reference / Cheatsheets\n" + "\n\n".join(cheatsheets))
 
 
-def _add_risks(config_dir: str, risks_file: Optional[str], parts: list):
+def _add_risks(skills_dir: str, risks_file: Optional[str], parts: list):
     """Internal: Adds risks to parts."""
     if risks_file:
-        r_path = risks_file if os.path.exists(risks_file) else os.path.join(config_dir, risks_file)
+        r_path = risks_file if os.path.exists(risks_file) else os.path.join(skills_dir, risks_file)
         if not os.path.exists(r_path):
-            r_path = os.path.join(config_dir, "risks.json")
+            r_path = os.path.join(skills_dir, "risks.json")
         if os.path.exists(r_path):
             try:
                 r_data = json.loads(load_risks_content(r_path))
@@ -216,17 +216,17 @@ def construct_system_prompt(
     """Combines role, constraints, skills, and risks into a system prompt."""
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     roles_dir = os.path.join(base_dir, "roles")
-    config_dir = os.path.join(base_dir, "config")
+    skills_dir = os.path.join(base_dir, "skills")
     parts = [load_file_content(os.path.join(roles_dir, f"role_{role_name}.md"))]
 
     if include_skills:
-        skills_data = load_skills_data(config_dir, skill_filter)
+        skills_data = load_skills_data(skills_dir, skill_filter)
         if isinstance(skills_data, list) and skills_data:
             clean = [{k: v for k, v in s.items() if k != "cheatsheet"} for s in skills_data]
             parts.append(f"\n# Available Skills definition\n{format_as_toon('skills', clean)}")
 
         if include_cheatsheet:
-            _add_cheatsheets(config_dir, skills_data, parts)
+            _add_cheatsheets(skills_dir, skills_data, parts)
 
-    _add_risks(config_dir, risks_file, parts)
+    _add_risks(skills_dir, risks_file, parts)
     return "\n".join(parts)

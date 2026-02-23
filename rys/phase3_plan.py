@@ -79,7 +79,7 @@ def plan_job(job, config, colors, tmp_dir, prompt_hash):
     e_cache = f"{tmp_dir}/.rys.{topic_hash}.p3.planner.json"
     raw_out = cached_call(
         "planner", goal_prompt, e_cache, config, colors,
-        skills=[job["skill"]], include_skills=True, risks="./config/risks.json"
+        skills=[job["skill"]], include_skills=True, risks="./skills/risks.json"
     )
 
     # Parse TOON/YAML

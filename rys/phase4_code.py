@@ -86,7 +86,7 @@ def _process_single_step(step_idx, step_desc, meta_context, config, colors):
         f"### Task\n{step_desc}\n\n### Context\n"
         f"- Input: {input_hint}\n",
         config, colors, skills=[meta_context["skill"]], include_skills=True,
-        risks="./config/risks.json"
+        risks="./skills/risks.json"
     )
 
     match = re.search(r"```(?:\w+)?\s*\n?(.*?)\n?```", snippet_out, re.DOTALL)

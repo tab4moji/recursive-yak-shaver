@@ -7,14 +7,14 @@
 これらは `rys/role_utils.py` によって動的に読み込まれ、以下の要素と組み合わされてシステムプロンプトとして構築される。
 
 1. **Base Role**: 基本的な性格設定と指示。
-2. **Skills Definition**: `config/skills.json` から抽出された利用可能なスキルのリスト。
+2. **Skills Definition**: `skills/skills.json` から抽出された利用可能なスキルのリスト。
 3. **Tool Reference / Cheatsheets**: 各スキルに紐づく具体的なツールの使用例。
-4. **Risk Knowledge Base**: `config/risks.json` に基づく禁止事項や注意点。
+4. **Risk Knowledge Base**: `skills/risks.json` に基づく禁止事項や注意点。
 
 ## スキル定義 (Skills)
 スキルは JSON 形式で定義され、以下の 2 段階で管理される。
-- `config/skills.json`: 主要なスキルのメタデータ。
-- `config/skills/*.json`: 各スキルの具体的な操作、入出力、推奨されるパターンなどの詳細（チートシート）。
+- `skills/skills.json`: 主要なスキルのメタデータ。
+- `skills/cheatsheets/*.json`: 各スキルの具体的な操作、入出力、推奨されるパターンなどの詳細（チートシート）。
 
 ## TOON (Token-Oriented Object Notation)
 LLM に対して情報を効率的に伝えるため、RYS は独自のデータ形式「TOON」を採用している。
