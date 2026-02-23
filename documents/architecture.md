@@ -6,6 +6,15 @@
 Recursive Yak Shaver (RYS) は、LLMを活用した「段階的分解・実行」型のパイプラインシステムである。
 一度の推論で全てを解決しようとせず、複数のフェーズ (Phases) に分割することで、確実かつ安全なタスク実行を目指している。
 
+## パイプライン・フェーズ
+RYS は、タスクの実行を 6 つの独立したフェーズに分割して処理する。各フェーズの詳細は [shaving_phases.md](./shaving_phases.md) にて定義・詳説されている。
+1. **Phase 1: Translation** (翻訳・正規化)
+2. **Phase 2: Dispatch** (タスク分解・スキル割り当て)
+3. **Phase 3: Grouping** (グループ化・依存関係解決)
+4. **Phase 4: Processing** (入出力要件の分析)
+5. **Phase 5: Generation** (実行可能コード生成)
+6. **Phase 6: Execution** (実行・結果報告)
+
 ## 主要コンセプト
 1. **Affirmative Control (肯定説明)**: 全てのロール指示およびチートシートにおいて、否定的な表現を排除し、肯定的な指示（「～せよ」「～を維持せよ」等）のみを用いる。これにより、LLMの指示追従性と実行の安定性を最大化する。
 2. **Pipeline Architecture**: 入力から実行までを 6 つのフェーズに分ける。
