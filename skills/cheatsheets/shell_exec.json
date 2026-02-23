@@ -21,13 +21,13 @@
     },
     {
       "task": "Identify the largest file from the list",
-      "recommended": "echo \"${input}\" | xargs du -b | sort -nr | head -n 1 | cut -d' ' -f2",
+      "recommended": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -nr | head -n 1 | cut -d' ' -f2-",
       "input_type": "List",
       "output_type": "Path"
     },
     {
       "task": "Identify the smallest file from the list",
-      "recommended": "echo \"${input}\" | xargs du -b | sort -n | head -n 1 | cut -d' ' -f2",
+      "recommended": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -n | head -n 1 | cut -d' ' -f2-",
       "input_type": "List",
       "output_type": "Path"
     },
