@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# 1.3: Grouping Phase Core Logic
-# リポジトリ規約に基づき pylint の指摘事項を修正
+# 1.4: Grouping Phase Core Logic
+# Updated: Renamed TOPIC to Task and REQUEST to Job (v1.4)
 """
-Grouping Phase Core Logic (v1.3)
+Grouping Phase Core Logic (v1.4)
 Step 1: ID Assignment + Title Extraction
 Step 2: Skill-based grouping
 Step 3: LLM-based intelligent grouping
@@ -18,36 +18,36 @@ from typing import List, Dict, Any
 
 def parse_input(dispatch_text: str) -> Dict[str, List[str]]:
     """
-    Parses dispatch output and groups topics by skill.
-    Returns: Dict[skill, List[topic_description]]
+    Parses dispatch output and groups tasks by skill.
+    Returns: Dict[skill, List[task_description]]
     """
     lines = [line.strip() for line in dispatch_text.strip().split('\n') if line.strip()]
     groups = {}
 
     for line in lines:
         skill = "UNKNOWN"
-        topic = line
+        task = line
 
         if "| SKILLS: " in line:
             parts = line.split("| SKILLS: ")
             skill = parts[-1].strip()
-            topic = parts[0].replace("TOPIC:", "").strip()
+            task = parts[0].replace("Task:", "").strip()
         elif "| IDONTKNOW: " in line:
             parts = line.split("| IDONTKNOW: ")
             skill = "IDONTKNOW"
-            topic = parts[0].replace("TOPIC:", "").strip()
+            task = parts[0].replace("Task:", "").strip()
 
-        groups.setdefault(skill, []).append(topic)
+        groups.setdefault(skill, []).append(task)
     return groups
 
 
-def run_grouper_llm(skill: str, topics: List[Dict[str, str]],
+def run_grouper_llm(skill: str, tasks: List[Dict[str, str]],
                    host: str, port: str, model: str) -> List[str]:
     """Step 3 (Gemma-3N): Intelligent grouping."""
     print("Phase3-Step3(gemma-3n):")
 
-    input_text = f"  {skill}: {', '.join([t['id'] for t in topics])}\n"
-    for t in topics:
+    input_text = f"  {skill}: {', '.join([t['id'] for t in tasks])}\n"
+    for t in tasks:
         input_text += f"    {t['id']}: {t['raw']}\n"
 
     print("Input for LLM:")
@@ -73,26 +73,26 @@ def run_grouper_llm(skill: str, topics: List[Dict[str, str]],
         print("\nParsed Grouping:")
         for line in result.stdout.strip().split('\n'):
             line = line.strip()
-            if line.startswith("REQUEST:"):
+            if line.startswith("Job:"):
                 print(f"  {line}")
                 output_lines.append(line)
         res = output_lines
     except Exception as e:  # pylint: disable=broad-exception-caught
         sys.stderr.write(f"Error calling grouper LLM: {e}\n")
-        res = [f"REQUEST: {t['id']}" for t in topics]
+        res = [f"Job: {t['id']}" for t in tasks]
 
     return res
 
-def _assign_topic_ids(dispatch_text: str) -> List[Dict[str, str]]:
-    """Step 1: Assign TOPIC<N> IDs + Extract Titles."""
+def _assign_task_ids(dispatch_text: str) -> List[Dict[str, str]]:
+    """Step 1: Assign Task<N> IDs + Extract Titles."""
     print("Phase3-Step1(python):")
     lines = [line.strip() for line in dispatch_text.strip().split('\n') if line.strip()]
-    all_topics = []
+    all_tasks = []
 
     for i, line in enumerate(lines, 1):
-        topic_id = f"TOPIC{i}"
+        task_id = f"Task{i}"
         title = "Unknown"
-        title_match = re.match(r"^TOPIC:\s*(.*?)\s*\|", line)
+        title_match = re.match(r"^Task:\s*(.*?)\s*\|", line)
         if title_match:
             title = title_match.group(1)
 
@@ -108,60 +108,60 @@ def _assign_topic_ids(dispatch_text: str) -> List[Dict[str, str]]:
                 if pot_skill in ["shell_exec", "python_math", "python_script", "web_access"]:
                     skill = pot_skill
 
-        t_data = {"id": topic_id, "title": title, "raw": line, "skill": skill}
-        all_topics.append(t_data)
-        print(f"  {topic_id}: {line}")
+        t_data = {"id": task_id, "title": title, "raw": line, "skill": skill}
+        all_tasks.append(t_data)
+        print(f"  {task_id}: {line}")
 
-    return all_topics
+    return all_tasks
 
-def _group_by_skill(all_topics: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
+def _group_by_skill(all_tasks: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
     """Step 2: Group by Skill."""
     print("\nPhase3-Step2(python): Grouping by skill...")
     skill_groups = {}
-    for t in all_topics:
+    for t in all_tasks:
         if t["skill"] != "IDONTKNOW":
             skill_groups.setdefault(t["skill"], []).append(t)
     return skill_groups
 
-def _normalize_topic_id(tid: str) -> str:
-    """Normalizes variations like 'TOP1' or '1' to 'TOPIC1'."""
+def _normalize_task_id(tid: str) -> str:
+    """Normalizes variations like 'Tas1' or '1' to 'Task1'."""
     match = re.search(r"(\d+)", tid)
     if match:
-        return f"TOPIC{match.group(1)}"
+        return f"Task{match.group(1)}"
     return tid
 
 def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
-                             idontknow_topics: List[Dict[str, str]],
+                             idontknow_tasks: List[Dict[str, str]],
                              host: str, port: str, model: str) -> List[Dict[str, Any]]:
     """Step 3: Intelligent Grouping."""
     print("")
-    raw_requests = []
+    raw_jobs = []
 
-    for t in idontknow_topics:
-        raw_requests.append({"skill": "IDONTKNOW", "topic_ids": [t["id"]]})
+    for t in idontknow_tasks:
+        raw_jobs.append({"skill": "IDONTKNOW", "task_ids": [t["id"]]})
 
-    for skill, topics in skill_groups.items():
-        if len(topics) == 1:
-            raw_requests.append({"skill": skill, "topic_ids": [topics[0]["id"]]})
+    for skill, tasks in skill_groups.items():
+        if len(tasks) == 1:
+            raw_jobs.append({"skill": skill, "task_ids": [tasks[0]["id"]]})
         else:
-            llm_results = run_grouper_llm(skill, topics, host, port, model)
+            llm_results = run_grouper_llm(skill, tasks, host, port, model)
             if not llm_results:
-                print(f"  Warning: No valid REQUEST lines found for {skill}.")
-                llm_results = [f"REQUEST: {t['id']}" for t in topics]
+                print(f"  Warning: No valid Job lines found for {skill}.")
+                llm_results = [f"Job: {t['id']}" for t in tasks]
 
-            for req_str in llm_results:
-                raw_ids = [id_str.strip() for id_str in req_str.replace("REQUEST:", "").split(",")]
-                ids = [_normalize_topic_id(rid) for rid in raw_ids if rid]
+            for job_str in llm_results:
+                raw_ids = [id_str.strip() for id_str in job_str.replace("Job:", "").split(",")]
+                ids = [_normalize_task_id(rid) for rid in raw_ids if rid]
                 if ids:
-                    raw_requests.append({"skill": skill, "topic_ids": ids})
-    return raw_requests
+                    raw_jobs.append({"skill": skill, "task_ids": ids})
+    return raw_jobs
 
-def _format_final_requests(raw_requests: List[Dict[str, Any]],
-                           topic_map: Dict[str, Dict[str, str]]) -> List[Dict[str, Any]]:
-    """Final Step: Sort and Number Requests with Titles."""
-    def get_min_topic_idx(req):
+def _format_final_jobs(raw_jobs: List[Dict[str, Any]],
+                        task_map: Dict[str, Dict[str, str]]) -> List[Dict[str, Any]]:
+    """Final Step: Sort and Number Jobs with Titles."""
+    def get_min_task_idx(job):
         indices = []
-        for tid in req["topic_ids"]:
+        for tid in job["task_ids"]:
             match = re.search(r"(\d+)", tid)
             if match:
                 indices.append(int(match.group(1)))
@@ -169,42 +169,42 @@ def _format_final_requests(raw_requests: List[Dict[str, Any]],
                 indices.append(9999)
         return min(indices) if indices else 9999
 
-    raw_requests.sort(key=get_min_topic_idx)
+    raw_jobs.sort(key=get_min_task_idx)
 
-    final_requests = []
-    print("\nFinal Grouped Requests:")
-    for i, req in enumerate(raw_requests, 1):
-        req_id = f"REQUEST{i}"
-        topic_parts = []
-        for tid in req["topic_ids"]:
-            t_info = topic_map.get(tid, {})
+    final_jobs = []
+    print("\nFinal Grouped Jobs:")
+    for i, job in enumerate(raw_jobs, 1):
+        job_id = f"Job{i}"
+        task_parts = []
+        for tid in job["task_ids"]:
+            t_info = task_map.get(tid, {})
             title = t_info.get("title", "Unknown")
-            topic_parts.append(f"{tid}({title})")
+            task_parts.append(f"{tid}({title})")
 
-        topic_str = ", ".join(topic_parts)
-        display_str = f"{req_id}: {topic_str}"
+        task_str = ", ".join(task_parts)
+        display_str = f"{job_id}: {task_str}"
         print(display_str)
 
-        final_requests.append({
-            "id": req_id, "skill": req["skill"],
-            "topics": req["topic_ids"], "display": display_str
+        final_jobs.append({
+            "id": job_id, "skill": job["skill"],
+            "tasks": job["task_ids"], "display": display_str
         })
-    return final_requests
+    return final_jobs
 
 def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Dict[str, Any]:
     """Processes grouping workflow."""
-    all_topics = _assign_topic_ids(dispatch_text)
-    topic_map = {t["id"]: t for t in all_topics}
+    all_tasks = _assign_task_ids(dispatch_text)
+    task_map = {t["id"]: t for t in all_tasks}
 
-    skill_groups = _group_by_skill(all_topics)
-    idontknow_topics = [t for t in all_topics if t["skill"] == "IDONTKNOW"]
+    skill_groups = _group_by_skill(all_tasks)
+    idontknow_tasks = [t for t in all_tasks if t["skill"] == "IDONTKNOW"]
 
-    raw_reqs = _llm_intelligent_grouping(skill_groups, idontknow_topics, host, port, model)
-    final_reqs = _format_final_requests(raw_reqs, topic_map)
+    raw_jobs = _llm_intelligent_grouping(skill_groups, idontknow_tasks, host, port, model)
+    final_jobs = _format_final_jobs(raw_jobs, task_map)
 
     return {
-        "all_topics": all_topics,
-        "grouped_requests": final_reqs
+        "all_tasks": all_tasks,
+        "grouped_jobs": final_jobs
     }
 
 def main():

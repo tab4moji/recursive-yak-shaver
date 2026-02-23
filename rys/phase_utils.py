@@ -62,14 +62,14 @@ def load_phase_json(path: str) -> Dict[str, Any]:
 
 
 def resolve_refs(data: Any) -> Any:
-    """Recursively replaces ref:TOPIC<N>.<binding> with $<binding>."""
+    """Recursively replaces ref:Task<N>.<binding> with $<binding>."""
     result = data
     if isinstance(data, dict):
         result = {k: resolve_refs(v) for k, v in data.items()}
     elif isinstance(data, list):
         result = [resolve_refs(i) for i in data]
     elif isinstance(data, str):
-        result = re.sub(r'ref:TOPIC\d+\.([a-zA-Z_0-9]+)', r'$\1', data)
+        result = re.sub(r'ref:Task\d+\.([a-zA-Z_0-9]+)', r'$\1', data)
     return result
 
 

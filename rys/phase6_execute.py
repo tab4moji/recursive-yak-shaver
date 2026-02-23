@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Phase 6: Final Execution (v1.2)
+Phase 6: Final Execution (v1.3)
 Executes scripts generated in Phase 5.
-
-History:
-1. 2026-02-17 Initial version (v1.1).
-2. 2026-02-17 v1.2: Fixed Pylint issues (trailing whitespace, docstrings,
-   f-strings, broad exception handling, subprocess check).
+Updated: Renamed REQUEST to Job (v1.3)
 """
 
 import sys
@@ -38,6 +34,7 @@ def main():
 
     for s in scripts:
         path = s['path']
+        job_id = s.get('job_id', s.get('request_id', 'Unknown'))
 
         # Path Correction Logic:
         # If the path in JSON is missing, try looking for the filename in the current RYS_CACHE_DIR
@@ -48,7 +45,7 @@ def main():
                 path = alt_path
 
         print("==================================================")
-        print(f"Executing {s['request_id']} ({s['skill']})")
+        print(f"Executing {job_id} ({s['skill']})")
         print(f"Path: {path}")
         print("--------------------------------------------------")
 

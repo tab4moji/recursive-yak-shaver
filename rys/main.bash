@@ -12,7 +12,7 @@ FROM_PHASE=,6
 PROMPT=""
 export RYS_AUTO="false"
 STOP_PHASE=6
-REQ_FILTER=""
+JOB_FILTER=""
 export RYS_SIMILARITY="0.0"
 
 # XDG Base Directory Support
@@ -25,8 +25,8 @@ for arg in "$@"; do
         FROM_PHASE=${arg#--from=}
     elif [[ $arg == "--auto" ]]; then
         export RYS_AUTO="true"
-    elif [[ $arg == --request=* ]]; then
-        REQ_FILTER="${arg#--request=}"
+    elif [[ $arg == --job=* ]] || [[ $arg == --request=* ]]; then
+        JOB_FILTER="${arg#*=}"
     elif [[ $arg == --similarity=* ]]; then
         export RYS_SIMILARITY="${arg#--similarity=}"
     elif [[ $arg == -s* ]]; then
@@ -147,21 +147,21 @@ if run_check 3 "${P3_JSON}"; then
     python3 ./rys/phase3_group.py --in-json "${P2_JSON}" --out-json "${P3_JSON}" ${common_args} --uuid "${RYS_UUID}"
 else
     echo -e "\n>>> 3. Grouping Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(req['display']) for req in d.get('grouped_requests', [])]"
+    python3 -c "import json; d=json.load(open('${P3_JSON}')); [print(job['display']) for job in d.get('grouped_jobs', [])]"
 fi
 check_stop 3
 
-# Phase 4: Request Processing (Input: P3_JSON + CONFIG)
+# Phase 4: Job Processing (Input: P3_JSON + CONFIG)
 P4_HASH=$( (md5sum < "${P3_JSON}" | cut -c1-8; echo "$CONFIG_HASH") | md5sum | cut -c1-8)
 P4_JSON="${RYS_CACHE_DIR}/.cache.p4.${P4_HASH}.json"
 export RYS_UUID="${P4_HASH}"
 
 if run_check 4 "${P4_JSON}"; then
-    echo -e "\n>>> 4. REQUEST Processing Phase"
+    echo -e "\n>>> 4. Job Processing Phase"
     python3 ./rys/phase4_request_loop.py --in-json "${P3_JSON}" --out-json "${P4_JSON}" --uuid "${RYS_UUID}" ${common_args}
 else
-    echo -e "\n>>> 4. REQUEST Processing Phase (Cached)"
-    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'Handled {req[\"request_id\"]} ({req[\"skill\"]})') for req in d.get('integrated_requests', [])]"
+    echo -e "\n>>> 4. Job Processing Phase (Cached)"
+    python3 -c "import json; d=json.load(open('${P4_JSON}')); [print(f'Handled {job[\"job_id\"]} ({job[\"skill\"]})') for job in d.get('integrated_jobs', [])]"
 fi
 check_stop 4
 
@@ -172,14 +172,14 @@ export RYS_UUID="${P5_HASH}"
 
 if run_check 5 "${P5_JSON}"; then
     echo -e "\n>>> 5. Script Generation Phase"
-    req_arg=""
-    if [ -n "$REQ_FILTER" ]; then req_arg="--request=${REQ_FILTER}"; fi
-    python3 ./rys/phase5_generate.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${RYS_UUID}" ${common_args} ${req_arg}
+    job_arg=""
+    if [ -n "$JOB_FILTER" ]; then job_arg="--job=${JOB_FILTER}"; fi
+    python3 ./rys/phase5_generate.py --in-json "${P4_JSON}" --out-json "${P5_JSON}" --uuid "${RYS_UUID}" ${common_args} ${job_arg}
 else
     echo -e "\n>>> 5. Script Generation Phase (Cached)"
     # Resolve and show path based on RYS_CACHE_DIR if the stored path is not found
     python3 -c "import json, os; d=json.load(open('${P5_JSON}')); cache_dir=os.environ.get('RYS_CACHE_DIR',''); \
-    [print(f'Generated {s[\"request_id\"]} ({s[\"skill\"]}) -> {s[\"path\"] if os.path.exists(s[\"path\"]) else os.path.join(cache_dir, os.path.basename(s[\"path\"]))}') for s in d.get('generated_scripts', [])]"
+    [print(f'Generated {s[\"job_id\"]} ({s[\"skill\"]}) -> {s[\"path\"] if os.path.exists(s[\"path\"]) else os.path.join(cache_dir, os.path.basename(s[\"path\"]))}') for s in d.get('generated_scripts', [])]"
 fi
 check_stop 5
 

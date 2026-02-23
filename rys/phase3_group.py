@@ -6,7 +6,7 @@ Phase 3: Grouping Phase (Entry Point)
 
 import sys
 import json
-from group_requests import process_grouping
+from group_jobs import process_grouping
 from phase_utils import get_common_parser, load_phase_json
 
 def main():

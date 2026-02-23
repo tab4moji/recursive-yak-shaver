@@ -1,25 +1,14 @@
 {
   "id": "web_access",
-  "name": "Web Access (HTTP)",
-  "description": "Tools for fetching online data and web content.",
-  "patterns": [
-    {
-      "task": "Fetch current weather for a city",
-      "recommended": "content=$(curl -s \"wttr.in/__CITY__?0q\")",
-      "output_type": "Content",
-      "binding": "content"
-    },
-    {
-      "task": "Search for specific information using DuckDuckGo",
-      "recommended": "content=$(curl -s \"https://api.duckduckgo.com/?q=__QUERY__&format=json\")",
-      "output_type": "Content",
-      "binding": "content"
-    },
-    {
-      "task": "General web search using curl",
-      "recommended": "content=$(curl -s \"https://www.google.com/search?q=__QUERY__\")",
-      "output_type": "Content",
-      "binding": "content"
-    }
-  ]
+  "type": "external",
+  "description": "[DISABLED] Web browsing and search functions are currently offline for maintenance.",
+  "cheatsheet": {
+    "usage": "Do not use this skill. All web-related requests should be handled with IDONTKNOW.",
+    "patterns": [
+      {
+        "intent": "Weather/Search",
+        "action": "Use IDONTKNOW for any request requiring internet access."
+      }
+    ]
+  }
 }

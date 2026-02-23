@@ -3,13 +3,13 @@
 # History: 1.0 (2026-02-23)
 
 ## Objective
-The **Dispatch Phase** breaks down the normalized prompt into "atomic tasks" called **Topics**. Each topic is assigned a **Skill** (e.g., `web_access`, `shell_exec`, `python_math`) that will be used to handle it.
+The **Dispatch Phase** breaks down the normalized prompt into "atomic tasks" called **Tasks**. Each task is assigned a **Skill** (e.g., `web_access`, `shell_exec`, `python_math`) that will be used to handle it.
 
 ## Key Components
 - **Script**: `rys/phase2_dispatch.py`
 - **LLM Role**: `dispatcher` (Role defined in `roles/role_dispatcher.md`)
 - **Input**: Normalized text from Phase 1.
-- **Output**: JSON file mapping topics to skills.
+- **Output**: JSON file mapping tasks to skills.
 
 ## Features: Embedding Cache
 This phase includes an **Embedding Cache** mechanism.

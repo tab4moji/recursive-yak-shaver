@@ -18,7 +18,7 @@ Identify operations that lead to irreversible system changes, data loss, securit
 
 **[WARN] - Medium Risk / State Modification**
 Identify operations that modify the current state or consume resources, which are common in development but benefit from user awareness.
-- Medium severity patterns include package installations, file overwrites, or external network requests.
+- Medium severity patterns include package installations, file overwrites, or external network jobs.
 
 **[PASS] - Low Risk / Safe Operations**
 Identify operations with minimal side effects on the system.
