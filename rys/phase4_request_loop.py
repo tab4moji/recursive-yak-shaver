@@ -38,11 +38,16 @@ def run_analyzer_llm(job: Dict, task_map: Dict, host: str, port: str, model: str
         end_idx = out_text.rfind('}')
         if start_idx != -1 and end_idx != -1:
             json_str = out_text[start_idx:end_idx+1]
-            return json.loads(json_str)
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError as jde:
+                sys.stderr.write(f"JSON Decode Error: {jde}\nRaw snippet: {json_str}\n")
+                return {"tasks": []}
 
+        sys.stderr.write(f"No JSON found in LLM output: {out_text[:200]}...\n")
         return {"tasks": []}
-    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-        sys.stderr.write(f"Error calling analyzer LLM: {e}\n")
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(f"Subprocess Error calling analyzer LLM: {e}\n")
         return {"tasks": []}
 
 def main():
