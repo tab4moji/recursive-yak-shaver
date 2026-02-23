@@ -20,6 +20,14 @@ if SCRIPT_DIR not in sys.path:
     sys.path.append(SCRIPT_DIR)
 
 
+def get_capture_glue(output_type):
+    """Returns the capture glue based on output type."""
+    if output_type == "list":
+        return "| mapfile -t script_output"
+    # Default to multi-line safe capture for Value, Path, Content, etc.
+    return "| read -r -d '' script_output || true"
+
+
 def process_single_job(job, args, llm_config):
     """Processes one job: codes tasks and writes the script."""
     job_id = job["job_id"]
@@ -60,7 +68,6 @@ def process_single_job(job, args, llm_config):
             # Transfer previous output to current input
             if not task.get("loop"):
                 # Smart transition: If previous output was a list, convert to multi-line string
-                # We check the previous task's output type
                 prev_task = job["tasks"][job["tasks"].index(task)-1]
                 if prev_task.get("output", {}).get("type") == "list":
                     script_lines.append("inputs=(\"${script_output[@]}\")")
@@ -79,17 +86,27 @@ def process_single_job(job, args, llm_config):
         
         script_lines.append(f"# --- {task['id']}: {task['title']} ---")
         
+        # Determine output capture glue
+        out_type = task.get("output", {}).get("type", "string").lower()
+        capture_glue = get_capture_glue(out_type)
+
         if task.get("loop"):
-            # Framework: Loop Architecture BEGIN
+            # Framework: Loop Architecture
             script_lines.append("inputs=(\"${script_output[@]}\")")
             script_lines.append("for input in \"${inputs[@]}\"; do")
-            # Indent snippet for better readability
             indented_snippet = "\n".join(["  " + l for l in snippet.splitlines()])
             script_lines.append(indented_snippet)
-            # Framework: Loop Architecture END
-            script_lines.append("done | read -r -d '' script_output || true")
+            script_lines.append(f"done {capture_glue}")
         else:
-            script_lines.append(snippet)
+            # Single task: Snippet + Capture
+            # Use block wrapping for multi-line snippets or specific scripts
+            if "\n" in snippet or snippet.strip().startswith("python3"):
+                script_lines.append("{")
+                indented_snippet = "\n".join(["  " + l for l in snippet.splitlines()])
+                script_lines.append(indented_snippet)
+                script_lines.append(f"}} {capture_glue}")
+            else:
+                script_lines.append(f"{snippet} {capture_glue}")
         
         # --- Framework Glue: Output Binding ---
         binding = task.get('output', {}).get('binding')

@@ -5,52 +5,52 @@
   "patterns": [
     {
       "task": "List all files in the directory",
-      "recommended": "find \"${input}\" -type f | mapfile -t script_output",
+      "recommended": "find \"${input}\" -type f",
       "output_type": "List"
     },
     {
       "task": "List files with specific extension",
-      "recommended": "find \"${input}\" -type f -name \"${input_filename}\" | mapfile -t script_output",
+      "recommended": "find \"${input}\" -type f -name \"${input_filename}\"",
       "output_type": "List"
     },
     {
       "task": "Calculate file size (with path)",
-      "recommended": "du -b \"${input}\" | sed 's/\\t/ /' | read -r script_output",
+      "recommended": "du -b \"${input}\" | sed 's/\\t/ /'",
       "input_type": "Path",
       "output_type": "Value"
     },
     {
       "task": "Identify the largest file from the list",
-      "recommended": "echo \"${input}\" | xargs du -b | sort -nr | head -n 1 | cut -d' ' -f2 | read -r script_output",
+      "recommended": "echo \"${input}\" | xargs du -b | sort -nr | head -n 1 | cut -d' ' -f2",
       "input_type": "List",
       "output_type": "Path"
     },
     {
       "task": "Identify the smallest file from the list",
-      "recommended": "echo \"${input}\" | xargs du -b | sort -n | head -n 1 | cut -d' ' -f2 | read -r script_output",
+      "recommended": "echo \"${input}\" | xargs du -b | sort -n | head -n 1 | cut -d' ' -f2",
       "input_type": "List",
       "output_type": "Path"
     },
     {
       "task": "Execute pylint on the specified file",
-      "recommended": "pylint \"${input}\" | read -r -d '' script_output || true",
+      "recommended": "pylint \"${input}\"",
       "input_type": "Path",
       "output_type": "Content"
     },
     {
       "task": "Show contents of the specified file",
-      "recommended": "cat \"${input}\" | read -r -d '' script_output || true",
+      "recommended": "cat \"${input}\"",
       "input_type": "Path",
       "output_type": "Content"
     },
     {
       "task": "Retrieve the current date and time",
-      "recommended": "date '+%Y-%m-%d %H:%M:%S' | read -r script_output",
+      "recommended": "date '+%Y-%m-%d %H:%M:%S'",
       "output_type": "DateTime"
     },
     {
       "task": "Identify the current directory path",
-      "recommended": "pwd | read -r script_output",
+      "recommended": "pwd",
       "output_type": "Path"
     }
   ]

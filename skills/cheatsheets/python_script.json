@@ -9,11 +9,11 @@
     },
     {
       "task": "Execute complex multi-line logic",
-      "recommended": "result=$(python3 << 'EOF'\nimport sys\nfor line in sys.stdin:\n    # Implement complex logic here\n    print(line.strip())\nEOF\n)"
+      "recommended": "python3 << 'EOF'\nimport sys\nfor line in sys.stdin:\n    # Implement complex logic here\n    print(line.strip())\nEOF"
     },
     {
       "task": "Perform static analysis using pylint",
-      "recommended": "result=$(pylint \"$1\")"
+      "recommended": "pylint \"$1\""
     }
   ]
 }
