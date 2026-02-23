@@ -8,6 +8,7 @@ Recursive Yak Shaver (RYS) は、LLMを活用した「段階的分解・実行�
 
 ## パイプライン・フェーズ
 RYS は、タスクの実行を 6 つの独立したフェーズに分割して処理する。各フェーズの詳細は [shaving_phases.md](./shaving_phases.md) にて定義・詳説されている。
+また、Bash スクリプトの自動生成に関する設計思想は [bash_framework_design.md](./bash_framework_design.md) を参照。
 1. **Phase 1: Translation** (翻訳・正規化)
 2. **Phase 2: Dispatch** (タスク分解・スキル割り当て)
 3. **Phase 3: Grouping** (グループ化・依存関係解決)
