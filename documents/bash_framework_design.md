@@ -23,6 +23,11 @@ The framework acts as the "glue" that connects multiple tasks into a single exec
     command | read -r -d '' script_output || true
     ```
 
+## Implicit Targets and "None" Input
+For tasks that represent inherent states or external information not tied to a specific local object (e.g., "current time", "weather", "sequence generation"), the system avoids using a default directory path (like `./`) as input.
+- **Rule**: Such tasks must have an input `type: "None"` and `value: null`.
+- **Logic**: This prevents the LLM (Coder) from incorrectly trying to use the filesystem path as a parameter for functions like `date` or `weather`.
+
 ## Skill-Driven Construction (The Hints)
 The construction of the script is driven by **Cheatsheets** (`skills/cheatsheets/*.json`).
 
