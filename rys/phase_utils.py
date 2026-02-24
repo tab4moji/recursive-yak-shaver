@@ -3,7 +3,6 @@
 """
 Phase Utilities (v1.3)
 Common functions for RYS phase scripts.
-1. 2026-02-17: Optimized call_role signature and fixed line lengths.
 """
 
 import os
@@ -103,26 +102,47 @@ def prepare_coder_prompt(topic: Dict[str, Any]) -> str:
 
 
 def invoke_coder(script_dir: str, prompt: str, skill: str, llm_config: Dict[str, Any], task: Dict[str, Any] = None) -> str:
-    """Invokes the Coder role with strict hard-coded fallbacks for reliability."""
-    if task and skill == "shell_exec":
+    """Invokes the Coder role with strict hard-coded fallbacks and cheatsheet matching."""
+    if task:
         title = task.get("title", "").lower()
-        # Hard-coded robust snippets for common failure points
-        if "largest" in title:
-            return "echo \"${input}\" | xargs -d '\\n' du -b | sort -nr | head -n 1 | awk '{$1=\"\"; print substr($0,2)}'"
-        if "smallest" in title:
-            return "echo \"${input}\" | xargs -d '\\n' du -b | sort -n | head -n 1 | awk '{$1=\"\"; print substr($0,2)}'"
-        if "python file" in title or "python ファイル" in title:
-            return "find \"${input}\" -type f -name \"*.py\""
-        if "current path" in title or "フルパス" in title:
-            return "pwd"
-        if "time" in title or "時間" in title:
-            return "date '+%Y-%m-%d %H:%M:%S'"
-        if "pylint" in title:
-            return "pylint \"${input}\""
-        if "cat" in title or "中身" in title or "content" in title:
-            return "cat \"${input}\""
+        
+        # Priority 1: Hard-coded robust snippets for shell_exec
+        if skill == "shell_exec":
+            if "largest" in title:
+                return "echo \"${input}\" | xargs -d '\\n' du -b | sort -nr | head -n 1 | awk '{$1=\"\"; print substr($0,2)}'"
+            if "smallest" in title:
+                return "echo \"${input}\" | xargs -d '\\n' du -b | sort -n | head -n 1 | awk '{$1=\"\"; print substr($0,2)}'"
+            if "python file" in title or "python ファイル" in title:
+                return "find \"${input}\" -type f -name \"*.py\""
+            if "current path" in title or "フルパス" in title:
+                return "pwd"
+            if "time" in title or "時間" in title:
+                return "date '+%Y-%m-%d %H:%M:%S'"
+            if "pylint" in title:
+                return "pylint \"${input}\""
+            if "cat" in title or "中身" in title or "content" in title:
+                return "cat \"${input}\""
 
-    snippet = ""
+        # Priority 2: Cheatsheet matching for all skills
+        cs_path = os.path.join(script_dir, "..", "skills", "cheatsheets", f"{skill}.json")
+        if os.path.exists(cs_path):
+            try:
+                with open(cs_path, "r", encoding="utf-8") as f:
+                    cs_data = json.load(f)
+                
+                # Priority 2.1: Exact task_name match
+                for pattern in cs_data.get("patterns", []):
+                    if pattern["task_name"].lower() == title:
+                        return pattern["syntax"]
+                
+                # Priority 2.2: Title contains task_name
+                for pattern in cs_data.get("patterns", []):
+                    if pattern["task_name"].lower() in title:
+                        return pattern["syntax"]
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    # Priority 3: LLM Call
     host = llm_config.get("host", "localhost")
     port = llm_config.get("port")
     model = llm_config.get("model", "gemma3n:e4b")
@@ -140,25 +160,19 @@ def invoke_coder(script_dir: str, prompt: str, skill: str, llm_config: Dict[str,
         out = res.stdout.strip()
         code_match = re.search(r"```(?:\w+)?\s*\n?(.*?)\n?```", out, re.DOTALL)
         snippet = code_match.group(1).strip() if code_match else out.strip()
-        if not code_match and out and ("Error" in out or "Connection" in out):
-            snippet = f"# Error: {out[:100]}..."
-
-        # Cleaning step: Remove trailing backticks or unbalanced single quotes
+        
+        # Cleaning
         if snippet.endswith("`") and snippet.count("`") % 2 != 0:
             snippet = snippet[:-1].strip()
         if snippet.endswith("'") and snippet.count("'") % 2 != 0:
             snippet = snippet[:-1].strip()
-        
-        # Remove bold markers like **pwd**
         snippet = re.sub(r"\*\*(.*?)\*\*", r"\1", snippet)
-
+        
         clean_lines = [l for l in snippet.splitlines()
                        if not (l.startswith("# Processing:") or l.startswith("# Output Type:"))]
-        snippet = "\n".join(clean_lines).strip()
-    except Exception as exc: # pylint: disable=broad-exception-caught
-        snippet = f"# Error calling coder LLM: {exc}"
-
-    return snippet
+        return "\n".join(clean_lines).strip()
+    except Exception as exc:
+        return f"# Error calling coder LLM: {exc}"
 
 
 def append_result_display(lines: List[str], req_id: str, binding: Optional[str]):
@@ -174,7 +188,6 @@ def append_result_display(lines: List[str], req_id: str, binding: Optional[str])
 
 def call_role(script_dir: str, role: str, prompt: str, config: Any, colors: Any, **kwargs) -> str:
     """Invokes a specific role through the centralized invoke_role_api."""
-    # pylint: disable=unused-argument
     return invoke_role_api(role, prompt, config, colors,
                            skills=kwargs.get("skills"),
                            include_skills=kwargs.get("include_skills", False),
@@ -184,7 +197,6 @@ def call_role(script_dir: str, role: str, prompt: str, config: Any, colors: Any,
 def parse_steps(text: str) -> List[str]:
     """Parses various step-list formats into individual steps."""
     steps = []
-    # Matches: "1. text", "- Step 1: text", "Milestone 1: text", etc.
     reg_str = r"^(?:[\-\*\s]*)(?:(?:Step|Milestone)\s+)?(\d+)[\.\:]?\s*(.*)"
     pattern = re.compile(reg_str, re.IGNORECASE)
     seen_descriptions = set()
@@ -195,6 +207,4 @@ def parse_steps(text: str) -> List[str]:
             if desc and desc not in seen_descriptions:
                 steps.append(desc)
                 seen_descriptions.add(desc)
-        if len(steps) >= 20:
-            break
     return steps
