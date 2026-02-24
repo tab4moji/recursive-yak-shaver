@@ -16,6 +16,18 @@ Your goal is to provide a "pure" bash code fragment that performs the task and o
 - **NO** markdown bullets, **NO** labels, **NO** conversational text.
 - **NO** non-existent methods (e.g., Use `sympy.sieve.primerange` or `sympy.primerange` instead of `sympy.primer`).
 
+### SKILL-LANGUAGE SEPARATION (CRITICAL)
+- **If Skill is `python_math` or `python_script`**:
+    - Output **ONLY** pure Python code.
+    - **NEVER** use `echo`, `cat`, or Bash shebangs (`#!/bin/bash`).
+    - **NEVER** use backticks (\`).
+    - **MANDATORY**: Assign the final result to `output_val`.
+- **If Skill is `shell_exec`**:
+    - Output **ONLY** pure Bash code.
+    - **NEVER** use `output_val = ...`.
+    - **NEVER** use backticks (\`).
+    - **MANDATORY**: Print the final result to stdout.
+
 ### CRITICAL BASH RULES (shell_exec)
 1. **ABSOLUTELY NO BACKTICKS**: **NEVER** use the backtick character (\`) for any reason. It causes fatal syntax errors. Use `$(...)` for sub-commands only when necessary.
 2. **Heredoc**: Closing `EOF` must be on its own line.

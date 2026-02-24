@@ -146,7 +146,7 @@ def format_as_toon(key: str, data: Any, indent_level: int = 0) -> str:
     return res
 
 
-def load_skill_detail(skills_dir: str, skill_id: str) -> str:
+def load_skill_detail(skills_dir: str, skill_id: str, fields: Optional[List[str]] = None) -> str:
     """Loads detailed skill definition from skills/cheatsheets/<id>.json as TOON."""
     path = os.path.join(skills_dir, "cheatsheets", f"{skill_id}.json")
     res = ""
@@ -156,14 +156,34 @@ def load_skill_detail(skills_dir: str, skill_id: str) -> str:
                 data = json.load(f_in)
             ops = []
             for p in data.get("patterns", []):
-                in_type = p.get('input_type', 'Any')
-                in_def = "./" if "path" in in_type.lower() or "dir" in in_type.lower() else ""
-                ops.append({
-                    "operation": p['task'].lower().replace(" ", "_"),
-                    "description": p['task'], "input_type": in_type,
-                    "input_default": in_def, "output_type": p.get('output_type', 'Any'),
-                    "recommended": p.get('recommended', '')
-                })
+                inputs = p.get('input', [])
+                in_str_list = []
+                for i in inputs:
+                    n = i.get('name', 'arg')
+                    d = i.get('description', '')
+                    t = i.get('type', 'Any')
+                    in_str_list.append(f"{n}({d}:{t})")
+                in_str = ", ".join(in_str_list) if in_str_list else "None"
+                
+                in_types = [i.get('type', 'Any') for i in inputs]
+                in_def = "./" if any("path" in t.lower() or "dir" in t.lower() for t in in_types) else ""
+                
+                full_op = {
+                    "task": p.get('task_name', 'Unknown'),
+                    "description": p.get('description', ''),
+                    "input": in_str,
+                    "input_default": in_def,
+                    "output": p.get('output_description', ''),
+                    "output_type": p.get('output_type', 'Any'),
+                    "syntax": p.get('syntax', '')
+                }
+                
+                if fields:
+                    filtered_op = {k: v for k, v in full_op.items() if k in fields}
+                    ops.append(filtered_op)
+                else:
+                    ops.append(full_op)
+
             t_data = {"skill_id": skill_id, "operations": ops,
                       "description": f"The \"{skill_id}\" skill virtual operations."}
             res = format_as_toon("", t_data)
@@ -182,13 +202,13 @@ def load_risks_content(risks_path: str) -> str:
     return content
 
 
-def _add_cheatsheets(skills_dir: str, skills_data: list, parts: list):
+def _add_cheatsheets(skills_dir: str, skills_data: list, parts: list, fields: Optional[List[str]] = None):
     """Internal: Adds cheatsheets to parts."""
     cheatsheets = []
     if isinstance(skills_data, list):
         for skill in skills_data:
             s_id = skill.get("id")
-            cs = skill.get("cheatsheet") or load_skill_detail(skills_dir, s_id)
+            cs = skill.get("cheatsheet") or load_skill_detail(skills_dir, s_id, fields=fields)
             if cs:
                 cheatsheets.append(f"## Reference for [{s_id}]\n{cs}")
     if cheatsheets:
@@ -219,6 +239,12 @@ def construct_system_prompt(
     skills_dir = os.path.join(base_dir, "skills")
     parts = [load_file_content(os.path.join(roles_dir, f"role_{role_name}.md"))]
 
+    fields = None
+    if role_name == "dispatcher":
+        fields = ["task", "description"]
+    elif role_name == "analyzer":
+        fields = ["task", "description", "input", "input_default", "output", "output_type"]
+
     if include_skills:
         skills_data = load_skills_data(skills_dir, skill_filter)
         if isinstance(skills_data, list) and skills_data:
@@ -226,7 +252,7 @@ def construct_system_prompt(
             parts.append(f"\n# Available Skills definition\n{format_as_toon('skills', clean)}")
 
         if include_cheatsheet:
-            _add_cheatsheets(skills_dir, skills_data, parts)
+            _add_cheatsheets(skills_dir, skills_data, parts, fields=fields)
 
     _add_risks(skills_dir, risks_file, parts)
     return "\n".join(parts)

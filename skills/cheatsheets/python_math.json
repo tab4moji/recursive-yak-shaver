@@ -4,63 +4,103 @@
   "description": "Numerical and symbolic calculations.",
   "patterns": [
     {
-      "task": "Find prime numbers in a range",
-      "recommended": "import math\noutput_val = [i for i in range(input_val['min'], input_val['max'] + 1) if i > 1 and all(i % d for d in range(2, int(math.sqrt(i)) + 1))]",
-      "input_type": "Value",
+      "task_name": "Find prime range",
+      "description": "Find all prime numbers within a specified numeric range.",
+      "syntax": "import sympy\noutput_val = list(sympy.primerange(int(input_val['min']), int(input_val['max']) + 1))",
+      "input": [
+        { "name": "range", "description": "Range dict with min and max keys", "type": "Value" }
+      ],
+      "output_description": "List of prime numbers",
       "output_type": "List"
     },
     {
-      "task": "Calculate factorial of a number",
-      "recommended": "import math\noutput_val = math.factorial(int(input_val))",
-      "input_type": "Value",
+      "task_name": "Calculate factorial",
+      "description": "Compute the factorial of a given integer.",
+      "syntax": "import math\noutput_val = math.factorial(int(input_val))",
+      "input": [
+        { "name": "n", "description": "Input integer", "type": "Value" }
+      ],
+      "output_description": "Factorial value",
       "output_type": "Value"
     },
     {
-      "task": "Perform complex algebraic calculation",
-      "recommended": "import sympy\nx = sympy.Symbol('x')\noutput_val = sympy.solve(input_val, x)",
-      "input_type": "Value",
+      "task_name": "Solve algebra",
+      "description": "Solve a complex symbolic algebraic equation for x using SymPy.",
+      "syntax": "import sympy\nx = sympy.Symbol('x')\noutput_val = [str(res) for res in sympy.solve(str(input_val), x)]",
+      "input": [
+        { "name": "equation", "description": "Equation string in SymPy format", "type": "Value" }
+      ],
+      "output_description": "List of solutions",
       "output_type": "Value"
     },
     {
-      "task": "Find prime factors of a number",
-      "recommended": "import sympy\noutput_val = sympy.primefactors(int(input_val))",
-      "input_type": "Value",
+      "task_name": "Prime factorization",
+      "description": "Calculate the prime factors of a given number using SymPy.",
+      "syntax": "import sympy\noutput_val = list(sympy.primefactors(int(input_val)))",
+      "input": [
+        { "name": "n", "description": "Input integer", "type": "Value" }
+      ],
+      "output_description": "List of prime factors",
       "output_type": "List"
     },
     {
-      "task": "Calculate Greatest Common Divisor (GCD)",
-      "recommended": "import math\noutput_val = math.gcd(input_val[0], input_val[1])",
-      "input_type": "List",
+      "task_name": "Greatest Common Divisor",
+      "description": "Find the GCD (Greatest Common Divisor) of two integers.",
+      "syntax": "import math\noutput_val = math.gcd(input_val[0], input_val[1])",
+      "input": [
+        { "name": "numbers", "description": "List of two integers", "type": "List" }
+      ],
+      "output_description": "Numeric GCD",
       "output_type": "Value"
     },
     {
-      "task": "Calculate Least Common Multiple (LCM)",
-      "recommended": "import math\noutput_val = abs(input_val[0] * input_val[1]) // math.gcd(input_val[0], input_val[1])",
-      "input_type": "List",
+      "task_name": "Least Common Multiple",
+      "description": "Find the LCM (Least Common Multiple) of two integers.",
+      "syntax": "import math\noutput_val = abs(input_val[0] * input_val[1]) // math.gcd(input_val[0], input_val[1])",
+      "input": [
+        { "name": "numbers", "description": "List of two integers", "type": "List" }
+      ],
+      "output_description": "Numeric LCM",
       "output_type": "Value"
     },
     {
-      "task": "Calculate mean and median of a list",
-      "recommended": "import statistics\noutput_val = {'mean': statistics.mean(input_val), 'median': statistics.median(input_val)}",
-      "input_type": "List",
+      "task_name": "Basic statistics",
+      "description": "Calculate mean and median for a list of numbers.",
+      "syntax": "import statistics\noutput_val = {'mean': statistics.mean(input_val), 'median': statistics.median(input_val)}",
+      "input": [
+        { "name": "data", "description": "List of numbers", "type": "List" }
+      ],
+      "output_description": "Dict with mean and median",
       "output_type": "Value"
     },
     {
-      "task": "Convert a decimal number to binary and hex",
-      "recommended": "output_val = {'bin': bin(int(input_val)), 'hex': hex(int(input_val))}",
-      "input_type": "Value",
+      "task_name": "Base conversion",
+      "description": "Convert a decimal integer to binary and hexadecimal strings.",
+      "syntax": "output_val = {'bin': bin(int(input_val)), 'hex': hex(int(input_val))}",
+      "input": [
+        { "name": "n", "description": "Input integer", "type": "Value" }
+      ],
+      "output_description": "Dict with binary and hex values",
       "output_type": "Value"
     },
     {
-      "task": "Generate all permutations of a list",
-      "recommended": "import itertools\noutput_val = list(itertools.permutations(input_val))",
-      "input_type": "List",
+      "task_name": "List permutations",
+      "description": "Generate all possible permutations of a provided list.",
+      "syntax": "import itertools\noutput_val = list(itertools.permutations(input_val))",
+      "input": [
+        { "name": "data", "description": "List of items", "type": "List" }
+      ],
+      "output_description": "List of permutation tuples",
       "output_type": "List"
     },
     {
-      "task": "Calculate combinations (nCr)",
-      "recommended": "import math\noutput_val = math.comb(input_val['n'], input_val['r'])",
-      "input_type": "Value",
+      "task_name": "Calculate combinations",
+      "description": "Compute the number of combinations (nCr) for n and r.",
+      "syntax": "import math\noutput_val = math.comb(input_val['n'], input_val['r'])",
+      "input": [
+        { "name": "params", "description": "Dict with n and r keys", "type": "Value" }
+      ],
+      "output_description": "Total number of combinations",
       "output_type": "Value"
     }
   ]

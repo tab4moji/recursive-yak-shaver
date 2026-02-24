@@ -12,10 +12,12 @@ The **Job Processing Phase** (also known as the Request Loop) performs a deep an
 - **Output**: JSON file with detailed I/O specifications and **Cheatsheet Hints**.
 
 ## Detailed Steps
-- **Phase 4-A: LLM Analysis**: The `analyzer` role examines each task to determine:
-    - What specific input it needs (e.g., a URL, a search query).
-    - What output it will produce.
-    - How that output should be bound to a variable for subsequent tasks.
+- **Phase 4-A: LLM Analysis**: The `analyzer` role examines each task to determine the detailed I/O plan.
+    - **Context Injection**: The analyzer receives rich metadata from the cheatsheets (Task, Description, Input Arguments, Output Details), but the actual implementation `syntax` is excluded to avoid premature code generation.
+    - **TOON Flattening**: Input arguments defined as arrays in the JSON schema are flattened into a `name(description:type)` format within the TOON prompt for maximum LLM readability.
+    - It determines what specific input it needs (e.g., a URL, a search query).
+    - It defines what output it will produce.
+    - It specifies how that output should be bound to a variable for subsequent tasks.
 - **Phase 4-B: Cheatsheet Hint Selection**: The `analyzer` scans the `skills/cheatsheets/*.json` to find the most relevant "pattern" for each task. It identifies:
     - Is the task a scalar-to-scalar (Item) or a scalar-to-array (Collection) operation?
     - Does it require a loop in Phase 5?

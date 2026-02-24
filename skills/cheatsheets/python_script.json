@@ -4,104 +4,177 @@
   "description": "General purpose automation and logic execution.",
   "patterns": [
     {
-      "task": "Process text to uppercase",
-      "recommended": "output_val = str(input_val).upper()",
-      "input_type": "Value",
+      "task_name": "To uppercase",
+      "description": "Convert the input string to uppercase characters.",
+      "syntax": "output_val = str(input_val).upper()",
+      "input": [
+        { "name": "input_text", "description": "Input text", "type": "Value" }
+      ],
+      "output_description": "Uppercase version of the text",
       "output_type": "Value"
     },
     {
-      "task": "List all files in the directory using Python",
-      "recommended": "import os\noutput_val = [os.path.join(r, f) for r, _, fs in os.walk(input_val) for f in fs]",
-      "input_type": "Path",
+      "task_name": "Recursive file list",
+      "description": "List all files in a directory recursively using os.walk.",
+      "syntax": "import os\noutput_val = [os.path.join(r, f) for r, _, fs in os.walk(input_val) for f in fs]",
+      "input": [
+        { "name": "input_path", "description": "Target directory path", "type": "Path" }
+      ],
+      "output_description": "List of full file paths",
       "output_type": "List"
     },
     {
-      "task": "Filter list using Python",
-      "recommended": "output_val = [l.strip() for l in input_val if 'keyword' in l]",
-      "input_type": "List",
+      "task_name": "Filter keyword",
+      "description": "Filter a list of strings to include only those containing a keyword.",
+      "syntax": "output_val = [l.strip() for l in input_val if 'keyword' in l]",
+      "input": [
+        { "name": "input_list", "description": "List of strings", "type": "List" },
+        { "name": "keyword", "description": "String to filter by", "type": "Value" }
+      ],
+      "output_description": "Filtered list of strings",
       "output_type": "List"
     },
     {
-      "task": "Sort complex data from JSON string",
-      "recommended": "import json\nd = json.loads(input_val)\noutput_val = sorted(d, key=lambda x: x['size'])",
-      "input_type": "Value",
+      "task_name": "Sort JSON data",
+      "description": "Parse a JSON string and sort the resulting list by size.",
+      "syntax": "import json\nd = json.loads(input_val)\noutput_val = sorted(d, key=lambda x: x['size'])",
+      "input": [
+        { "name": "input_json", "description": "JSON string containing a list of objects", "type": "Value" }
+      ],
+      "output_description": "Sorted list of objects",
       "output_type": "List"
     },
     {
-      "task": "Perform static analysis using pylint",
-      "recommended": "import subprocess\nres = subprocess.run(['pylint', input_val], capture_output=True, text=True)\noutput_val = res.stdout",
-      "input_type": "Path",
+      "task_name": "Python static analysis",
+      "description": "Run pylint on a file path and capture the output.",
+      "syntax": "import subprocess\nres = subprocess.run(['pylint', input_val], capture_output=True, text=True)\noutput_val = res.stdout",
+      "input": [
+        { "name": "input_file", "description": "Python file path", "type": "Path" }
+      ],
+      "output_description": "Pylint output text",
       "output_type": "Content"
     },
     {
-      "task": "Read a JSON file and load its content",
-      "recommended": "import json\nwith open(input_val, 'r') as f:\n    output_val = json.load(f)",
-      "input_type": "Path",
+      "task_name": "Load JSON file",
+      "description": "Open and load a JSON file into a Python object.",
+      "syntax": "import json\nwith open(input_val, 'r') as f:\n    output_val = json.load(f)",
+      "input": [
+        { "name": "input_file", "description": "JSON file path", "type": "Path" }
+      ],
+      "output_description": "Deserialized Python object",
       "output_type": "Value"
     },
     {
-      "task": "Write a dictionary to a JSON file",
-      "recommended": "import json\nwith open(output_path, 'w') as f:\n    json.dump(input_val, f, indent=2)",
-      "input_type": "Value",
+      "task_name": "Save JSON file",
+      "description": "Serialize a Python object to a JSON file.",
+      "syntax": "import json\nwith open(output_path, 'w') as f:\n    json.dump(input_val, f, indent=2)",
+      "input": [
+        { "name": "input_data", "description": "Python dictionary or list", "type": "Value" },
+        { "name": "output_path", "description": "Target file path", "type": "Path" }
+      ],
+      "output_description": "Output file path",
       "output_type": "Path"
     },
     {
-      "task": "Search for a regular expression in a string",
-      "recommended": "import re\nmatch = re.search(input_pattern, input_val)\noutput_val = match.group(0) if match else None",
-      "input_type": "Value",
+      "task_name": "Regex search",
+      "description": "Search for a regular expression pattern in the input value.",
+      "syntax": "import re\nmatch = re.search(input_pattern, input_val)\noutput_val = match.group(0) if match else None",
+      "input": [
+        { "name": "input_text", "description": "Target string", "type": "Value" },
+        { "name": "input_pattern", "description": "Regex pattern", "type": "Value" }
+      ],
+      "output_description": "First regex match found",
       "output_type": "Value"
     },
     {
-      "task": "Substitute a regular expression in a string",
-      "recommended": "import re\noutput_val = re.sub(input_pattern, input_replacement, input_val)",
-      "input_type": "Value",
+      "task_name": "Regex substitute",
+      "description": "Replace all occurrences of a regex pattern with a replacement string.",
+      "syntax": "import re\noutput_val = re.sub(input_pattern, input_replacement, input_val)",
+      "input": [
+        { "name": "input_text", "description": "Source string", "type": "Value" },
+        { "name": "input_pattern", "description": "Regex pattern", "type": "Value" },
+        { "name": "input_replacement", "description": "Replacement string", "type": "Value" }
+      ],
+      "output_description": "Resulting string after substitution",
       "output_type": "Value"
     },
     {
-      "task": "Read a CSV file as a list of dictionaries",
-      "recommended": "import csv\nwith open(input_val, 'r') as f:\n    reader = csv.DictReader(f)\n    output_val = [row for row in reader]",
-      "input_type": "Path",
+      "task_name": "Read CSV file",
+      "description": "Load a CSV file as a list of dictionaries using DictReader.",
+      "syntax": "import csv\nwith open(input_val, 'r') as f:\n    reader = csv.DictReader(f)\n    output_val = [row for row in reader]",
+      "input": [
+        { "name": "input_file", "description": "CSV file path", "type": "Path" }
+      ],
+      "output_description": "List of rows as dictionaries",
       "output_type": "List"
     },
     {
-      "task": "Write a list of dictionaries to a CSV file",
-      "recommended": "import csv\nwith open(output_path, 'w', newline='') as f:\n    if input_val:\n        writer = csv.DictWriter(f, fieldnames=input_val[0].keys())\n        writer.writeheader()\n        writer.writerows(input_val)",
-      "input_type": "List",
+      "task_name": "Write CSV file",
+      "description": "Write a list of dictionaries to a CSV file with headers.",
+      "syntax": "import csv\nwith open(output_path, 'w', newline='') as f:\n    if input_val:\n        writer = csv.DictWriter(f, fieldnames=input_val[0].keys())\n        writer.writeheader()\n        writer.writerows(input_val)",
+      "input": [
+        { "name": "input_list", "description": "List of dictionaries", "type": "List" },
+        { "name": "output_path", "description": "Output CSV file path", "type": "Path" }
+      ],
+      "output_description": "Output CSV file path",
       "output_type": "Path"
     },
     {
-      "task": "Get current datetime as a string",
-      "recommended": "from datetime import datetime\noutput_val = datetime.now().strftime('%Y-%m-%d %H:%M:%S')",
+      "task_name": "Format current datetime",
+      "description": "Get the current local date and time in a human-readable format.",
+      "syntax": "from datetime import datetime\noutput_val = datetime.now().strftime('%Y-%m-%d %H:%M:%S')",
+      "input": [],
+      "output_description": "Formatted datetime string",
       "output_type": "Value"
     },
     {
-      "task": "Base64 encode a string",
-      "recommended": "import base64\noutput_val = base64.b64encode(input_val.encode()).decode()",
-      "input_type": "Value",
+      "task_name": "Base64 encode",
+      "description": "Encode a string into a Base64-encoded string.",
+      "syntax": "import base64\noutput_val = base64.b64encode(input_val.encode()).decode()",
+      "input": [
+        { "name": "input_text", "description": "Source string", "type": "Value" }
+      ],
+      "output_description": "Base64 string",
       "output_type": "Value"
     },
     {
-      "task": "Base64 decode a string",
-      "recommended": "import base64\noutput_val = base64.b64decode(input_val).decode()",
-      "input_type": "Value",
+      "task_name": "Base64 decode",
+      "description": "Decode a Base64-encoded string back to its original form.",
+      "syntax": "import base64\noutput_val = base64.b64decode(input_val).decode()",
+      "input": [
+        { "name": "input_b64", "description": "Base64 string", "type": "Value" }
+      ],
+      "output_description": "Decoded original string",
       "output_type": "Value"
     },
     {
-      "task": "Check if a file or directory exists",
-      "recommended": "import os\noutput_val = os.path.exists(input_val)",
-      "input_type": "Path",
+      "task_name": "Path exists",
+      "description": "Check if a file or directory exists at the specified path.",
+      "syntax": "import os\noutput_val = os.path.exists(input_val)",
+      "input": [
+        { "name": "input_path", "description": "System path", "type": "Path" }
+      ],
+      "output_description": "Boolean existence status",
       "output_type": "Value"
     },
     {
-      "task": "Identify the directory name from a path",
-      "recommended": "import os\noutput_val = os.path.dirname(input_val)",
-      "input_type": "Path",
+      "task_name": "Get directory name",
+      "description": "Extract the directory component from a full file path.",
+      "syntax": "import os\noutput_val = os.path.dirname(input_val)",
+      "input": [
+        { "name": "input_file", "description": "Full file path", "type": "Path" }
+      ],
+      "output_description": "Parent directory path",
       "output_type": "Path"
     },
     {
-      "task": "Perform URL quoting (URL encode)",
-      "recommended": "import urllib.parse\noutput_val = urllib.parse.quote(input_val)",
-      "input_type": "Value",
+      "task_name": "URL encode",
+      "description": "Quote/escape a string for inclusion in a URL.",
+      "syntax": "import urllib.parse\noutput_val = urllib.parse.quote(input_val)",
+      "input": [
+        { "name": "input_text", "description": "Raw string", "type": "Value" }
+      ],
+      "output_description": "URL-encoded string",
       "output_type": "Value"
     }
   ]

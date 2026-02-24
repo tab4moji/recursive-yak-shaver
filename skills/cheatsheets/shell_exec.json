@@ -4,123 +4,215 @@
   "description": "Standard tools for file processing and system operations.",
   "patterns": [
     {
-      "task": "List all files in the directory",
-      "recommended": "find \"${input}\" -type f",
+      "task_name": "List all files",
+      "description": "Recursively list all regular files within a specified directory.",
+      "syntax": "find \"${input}\" -type f",
+      "input": [
+        { "name": "input_path", "description": "Directory path to search", "type": "Path" }
+      ],
+      "output_description": "A list of found file paths",
       "output_type": "List"
     },
     {
-      "task": "List files with specific extension",
-      "recommended": "find \"${input}\" -type f -name \"${input_filename}\"",
+      "task_name": "List files by extension",
+      "description": "Find files with a specific extension in the given directory.",
+      "syntax": "find \"${input}\" -type f -name \"${input_filename}\"",
+      "input": [
+        { "name": "input_path", "description": "Base directory path", "type": "Path" },
+        { "name": "input_filename", "description": "Filename pattern (e.g., *.py)", "type": "Value" }
+      ],
+      "output_description": "A list of matching file paths",
       "output_type": "List"
     },
     {
-      "task": "Calculate file size (with path)",
-      "recommended": "du -b \"${input}\" | sed 's/\\t/ /'",
-      "input_type": "Path",
+      "task_name": "Calculate file size",
+      "description": "Get the byte size of a file and display it with the path.",
+      "syntax": "du -b \"${input}\" | sed 's/\\t/ /'",
+      "input": [
+        { "name": "input_file", "description": "Path to the target file", "type": "Path" }
+      ],
+      "output_description": "Size in bytes and the file path",
       "output_type": "Value"
     },
     {
-      "task": "Identify the largest file from the list",
-      "recommended": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -nr | head -n 1 | cut -d' ' -f2-",
-      "input_type": "List",
+      "task_name": "Identify largest file",
+      "description": "Find the largest file from a provided list of file paths.",
+      "syntax": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -nr | head -n 1 | cut -d' ' -f2-",
+      "input": [
+        { "name": "input_list", "description": "List of file paths", "type": "List" }
+      ],
+      "output_description": "Path of the largest file",
       "output_type": "Path"
     },
     {
-      "task": "Identify the smallest file from the list",
-      "recommended": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -n | head -n 1 | cut -d' ' -f2-",
-      "input_type": "List",
+      "task_name": "Identify smallest file",
+      "description": "Find the smallest file from a provided list of file paths.",
+      "syntax": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -n | head -n 1 | cut -d' ' -f2-",
+      "input": [
+        { "name": "input_list", "description": "List of file paths", "type": "List" }
+      ],
+      "output_description": "Path of the smallest file",
       "output_type": "Path"
     },
     {
-      "task": "Execute pylint on the specified file",
-      "recommended": "pylint \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Run pylint",
+      "description": "Perform static analysis on a Python file using pylint.",
+      "syntax": "pylint \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the Python file", "type": "Path" }
+      ],
+      "output_description": "Pylint analysis report",
       "output_type": "Content"
     },
     {
-      "task": "Show contents of the specified file",
-      "recommended": "cat \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Show file content",
+      "description": "Read and display the entire content of a specified file.",
+      "syntax": "cat \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" }
+      ],
+      "output_description": "Text content of the file",
       "output_type": "Content"
     },
     {
-      "task": "Retrieve the current date and time",
-      "recommended": "date '+%Y-%m-%d %H:%M:%S'",
+      "task_name": "Get current datetime",
+      "description": "Retrieve the current system date and time in a standard format.",
+      "syntax": "date '+%Y-%m-%d %H:%M:%S'",
+      "input": [],
+      "output_description": "Current date and time string",
       "output_type": "DateTime"
     },
     {
-      "task": "Identify the current directory path",
-      "recommended": "pwd",
+      "task_name": "Identify current path",
+      "description": "Get the absolute path of the current working directory.",
+      "syntax": "pwd",
+      "input": [],
+      "output_description": "Absolute directory path",
       "output_type": "Path"
     },
     {
-      "task": "Check if a specific string exists in a file",
-      "recommended": "grep -q \"${input_keyword}\" \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Search string in file",
+      "description": "Check if a specific keyword exists within a file.",
+      "syntax": "grep -q \"${input_keyword}\" \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" },
+        { "name": "input_keyword", "description": "String to search for", "type": "Value" }
+      ],
+      "output_description": "Exit status (0 if found, 1 if not)",
       "output_type": "Status"
     },
     {
-      "task": "Count lines in the specified file",
-      "recommended": "wc -l < \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Count lines",
+      "description": "Count the total number of lines in a specified file.",
+      "syntax": "wc -l < \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" }
+      ],
+      "output_description": "Total line count",
       "output_type": "Value"
     },
     {
-      "task": "Extract the last N lines of a file",
-      "recommended": "tail -n \"${input_n:-10}\" \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Tail file",
+      "description": "Extract the last N lines from the end of a file.",
+      "syntax": "tail -n \"${input_n:-10}\" \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" },
+        { "name": "input_n", "description": "Number of lines to tail", "type": "Value" }
+      ],
+      "output_description": "The last N lines of text",
       "output_type": "Content"
     },
     {
-      "task": "Extract a specific column from a TSV file",
-      "recommended": "cut -f \"${input_column:-1}\" \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Extract TSV column",
+      "description": "Extract a specific column from a Tab-Separated Values file.",
+      "syntax": "cut -f \"${input_column:-1}\" \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the TSV file", "type": "Path" },
+        { "name": "input_column", "description": "Column index (1-based)", "type": "Value" }
+      ],
+      "output_description": "Contents of the specified column",
       "output_type": "Content"
     },
     {
-      "task": "Replace a string in a file (in-place)",
-      "recommended": "sed -i \"s/${input_old}/${input_new}/g\" \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Replace string in-place",
+      "description": "Perform a global string replacement within a file and save changes.",
+      "syntax": "sed -i \"s/${input_old}/${input_new}/g\" \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" },
+        { "name": "input_old", "description": "String to be replaced", "type": "Value" },
+        { "name": "input_new", "description": "New string", "type": "Value" }
+      ],
+      "output_description": "Operation success status",
       "output_type": "Status"
     },
     {
-      "task": "Find files modified within the last 24 hours",
-      "recommended": "find \"${input}\" -type f -mtime -1",
-      "input_type": "Path",
+      "task_name": "Find recently modified",
+      "description": "List all files modified within the last 24 hours.",
+      "syntax": "find \"${input}\" -type f -mtime -1",
+      "input": [
+        { "name": "input_path", "description": "Directory path to scan", "type": "Path" }
+      ],
+      "output_description": "List of recently modified files",
       "output_type": "List"
     },
     {
-      "task": "Check if a command is available on the system",
-      "recommended": "command -v \"${input_command}\"",
+      "task_name": "Check command existence",
+      "description": "Verify if a specific command is available in the system PATH.",
+      "syntax": "command -v \"${input_command}\"",
+      "input": [
+        { "name": "input_command", "description": "Command name", "type": "Value" }
+      ],
+      "output_description": "Path to the command executable",
       "output_type": "Path"
     },
     {
-      "task": "Calculate the SHA256 checksum of a file",
-      "recommended": "sha256sum \"${input}\" | cut -d' ' -f1",
-      "input_type": "Path",
+      "task_name": "Calculate SHA256",
+      "description": "Generate the SHA256 checksum for a specified file.",
+      "syntax": "sha256sum \"${input}\" | cut -d' ' -f1",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" }
+      ],
+      "output_description": "SHA256 hash string",
       "output_type": "Value"
     },
     {
-      "task": "Extract a tar.gz archive to the specified directory",
-      "recommended": "tar -xzf \"${input}\" -C \"${input_dir:-.}\"",
-      "input_type": "Path",
+      "task_name": "Extract tar.gz",
+      "description": "Extract a compressed tar.gz archive to a target directory.",
+      "syntax": "tar -xzf \"${input}\" -C \"${input_dir:-.}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the archive", "type": "Path" },
+        { "name": "input_dir", "description": "Target directory", "type": "Path" }
+      ],
+      "output_description": "Extraction success status",
       "output_type": "Status"
     },
     {
-      "task": "Create a zip archive of the specified directory",
-      "recommended": "zip -r \"${output_filename:-archive.zip}\" \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Create zip",
+      "description": "Create a zip archive containing the specified directory.",
+      "syntax": "zip -r \"${output_filename:-archive.zip}\" \"${input}\"",
+      "input": [
+        { "name": "input_path", "description": "Source directory path", "type": "Path" },
+        { "name": "output_filename", "description": "Output zip filename", "type": "Value" }
+      ],
+      "output_description": "Path to the created zip file",
       "output_type": "Path"
     },
     {
-      "task": "Get file permissions in numeric format",
-      "recommended": "stat -c %a \"${input}\"",
-      "input_type": "Path",
+      "task_name": "Get file permissions",
+      "description": "Retrieve the octal file permissions of a specified path.",
+      "syntax": "stat -c %a \"${input}\"",
+      "input": [
+        { "name": "input_file", "description": "Path to the file", "type": "Path" }
+      ],
+      "output_description": "Permissions in numeric format",
       "output_type": "Value"
     },
     {
-      "task": "Retrieve the current Unix timestamp",
-      "recommended": "date +%s",
+      "task_name": "Get Unix timestamp",
+      "description": "Retrieve the current Unix timestamp (seconds since epoch).",
+      "syntax": "date +%s",
+      "input": [],
+      "output_description": "Numeric Unix timestamp",
       "output_type": "Value"
     }
   ]

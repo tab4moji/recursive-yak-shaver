@@ -12,10 +12,10 @@ The **Script Generation Phase** (also known as the **Build Phase**) transforms t
 - **Output**: Executable `.sh` script files in the cache directory.
 
 ## Operation: The Build Engine
-1. **Framework Initialization**: The generator starts by writing the Bash boilerplate (e.g., `set -euo pipefail`).
+1. **Framework Initialization**: The generator starts by writing the Bash boilerplate (e.g., `set -euo pipefail`) or Python `main()` wrapper.
 2. **Task Snippet Request**: For each task in a job:
-    - It provides the `coder` role with the task details and the selected **Cheatsheet Pattern** as a "hint."
-    - The `coder` generates a clean, focused snippet that consumes `input` and produces `script_output`.
+    - It provides the `coder` role with the task details and the **Full Cheatsheet Pattern** (including `syntax`) as a "hint."
+    - The `coder` generates a clean, focused snippet that consumes `input` (or `input_val`) and produces `script_output` (or `output_val`).
 3. **Automated Wrapping**:
     - **Single Task**: The snippet is placed directly into the script with its `input` and `script_output` bindings.
     - **Loop Task**: If the task operates on an array, the generator wraps the snippet in a `for input in "${inputs[@]}"` loop.

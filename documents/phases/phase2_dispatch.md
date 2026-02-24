@@ -20,8 +20,9 @@ This phase includes an **Embedding Cache** mechanism.
 ## Operation
 1. The script first checks the cache if `--similarity > 0`.
 2. If no cache hit, it calls the `dispatcher` role with a list of available skills.
-3. The LLM decomposes the prompt into discrete tasks and identifies which skill is best suited for each task.
-4. The result is saved to a JSON file in the cache directory.
+3. **Context Filtering**: To optimize token usage and keep the LLM focused on planning, only the `task` and `description` fields from the cheatsheets are provided to the Dispatcher.
+4. The LLM decomposes the prompt into discrete tasks and identifies which skill is best suited for each task.
+5. The result is saved to a JSON file in the cache directory.
 
 ## Importance
 This phase acts as a router, deciding *what* needs to be done and *how* (which skill) it should be executed.
