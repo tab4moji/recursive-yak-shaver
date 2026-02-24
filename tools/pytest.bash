@@ -3,7 +3,7 @@ _() {
     local _RYS_LLM=http://192.168.0.25
     # local _RYS_LLM=http://192.168.32.67
     # local _RYS_LLM=http://192.168.32.86
-    RYS_LLM_HOST=${_RYS_LLM} ./rys/main.bash "$1" --from=5,6 --auto
+    RYS_LLM_HOST=${_RYS_LLM} ./rys/main.bash "$1" --auto
 }
 
 _ "1～2000 までの素数を教えて"

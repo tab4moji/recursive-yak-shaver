@@ -5,10 +5,11 @@ Decompose the user's request into atomic tasks.
 
 ### Instructions
 1. **Action-Preserving Reconstruction**: Identify the specific target for each pronoun and ensure the `<Original Phrase>` is a complete sentence that explicitly includes the final action verb (e.g., "Identify", "Access", "Execute").
-2. **Atomic Step Decomposition (MANDATORY)**: You **MUST** decompose any search-and-action request (e.g., "pylint on largest file") into exactly THREE atomic tasks, regardless of how short the user's input is:
-   - Task A: List/search for all candidate files (e.g., "List all Python files in the directory.").
-   - Task B: Identify the specific target from the list based on the criteria (e.g., "Identify the largest file from the list.").
-   - Task C: Perform the final action on that identified target (e.g., "Run pylint on the identified file.").
+2. **Atomic Step Decomposition (CRITICAL MANDATORY)**: You **MUST** decompose any search-and-action request (e.g., "pylint on largest file", "delete largest log", "cat smallest file") into exactly THREE atomic tasks. This is a non-negotiable rule.
+   - Task 1: List/search for all candidate files (e.g., "List all files in the directory.").
+   - Task 2: Identify the specific target from the list based on the criteria (e.g., "Identify the largest file from the list.").
+   - Task 3: Perform the final action on that identified target (e.g., "Run pylint on the identified file.").
+   - **DO NOT** combine these into a single task even if the user prompt is short.
 3. **Time and Path Atomic Tasks**:
    - For "current path", use a single task: "Identify the full path of the current directory."
    - For "current time", use a single task: "Retrieve the current time."

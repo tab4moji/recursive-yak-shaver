@@ -174,12 +174,19 @@ def process_bash_job(job, args, llm_config):
             # Transfer previous output to current input
             if not task.get("loop"):
                 # Smart transition: If previous output was a list, convert to multi-line string
-                prev_task = job["tasks"][job["tasks"].index(task)-1]
+                prev_task_idx = job["tasks"].index(task)-1
+                prev_task = job["tasks"][prev_task_idx]
+                prev_binding = prev_task.get("output", {}).get("binding", "input")
+                
                 if prev_task.get("output", {}).get("type") == "list":
                     script_lines.append("inputs=(\"${script_output[@]}\")")
                     script_lines.append("input=$(printf \"%s\\n\" \"${inputs[@]}\")")
                 else:
                     script_lines.append("input=\"${script_output}\"")
+                
+                # Define the binding variable for backward compatibility with older prompts
+                if prev_binding and prev_binding != "input":
+                    script_lines.append(f"{prev_binding}=\"${{input}}\"")
             
             # Handle parameters even for non-first tasks if any
             params = task.get("input", {}).get("params", {})

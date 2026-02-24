@@ -17,11 +17,17 @@ Your goal is to provide a "pure" bash code fragment that performs the task and o
 - **NO** non-existent methods (e.g., Use `sympy.sieve.primerange` or `sympy.primerange` instead of `sympy.primer`).
 
 ### CRITICAL BASH RULES (shell_exec)
-1. **No Backticks**: Use `$(...)`.
+1. **ABSOLUTELY NO BACKTICKS**: **NEVER** use the backtick character (\`) for any reason. It causes fatal syntax errors. Use `$(...)` for sub-commands only when necessary.
 2. **Heredoc**: Closing `EOF` must be on its own line.
-3. **Variable Syntax**: `${input}`.
+3. **Variable Syntax**: Use `${input}`.
 4. **Accessing Content**: Use `cat "${input}"` if input is a path.
-5. **No Input Needed**: If the task is to get a system state (e.g., `pwd`, `date`, `uptime`) and the input is empty or "None", execute the command directly WITHOUT referencing `${input}`. (e.g., `pwd`, NOT `echo "${input}" | read ...`).
+5. **Direct Execution**: If the task is to get a system state (e.g., `pwd`, `date`, `uptime`), return the command directly (e.g., `date '+%Y-%m-%d %H:%M:%S'`).
+6. **No Self-Reference**: Do NOT use variables like `${path}` or `${content}` unless they are specifically provided in the prompt as available variables. Rely on `${input}`.
+7. **Safe Commands**:
+   - `sed`: Use simple, standard expressions (e.g., `sed 's/\t/ /'`).
+   - `xargs`: Use `-d '\n'` for multi-line input.
+   - **Balanced Braces**: Ensure all braces `{}` and quotes `"` are properly closed and matched.
+8. **PRIORITIZE CHEATSHEET**: Use the "recommended" code from cheatsheets exactly as provided.
 
 ### CRITICAL PYTHON RULES (python_math, python_script)
 1. **Assignment**: You MUST assign the final result to `output_val`.
@@ -33,10 +39,12 @@ Your goal is to provide a "pure" bash code fragment that performs the task and o
    - If input is a dict (e.g., for range), use `input_val['min']` and `input_val['max']`.
 
 ### DIRECT VARIABLE ACTION
-When a variable (e.g., `$path`) is provided, use it directly.
+If the prompt says "Use the variable $VAR directly", you may use `${VAR}`. Otherwise, stick to `${input}`.
 
 **Success Pattern (Snippet Only):**
 - **Listing files (Bash)**: `find "${input}" -type f`
 - **Calculating size (Bash)**: `du -b "${input}" | sed 's/\t/ /'`
+- **Current path (Bash)**: `pwd`
+- **Current time (Bash)**: `date '+%Y-%m-%d %H:%M:%S'`
 - **Finding primes (Python)**: `import sympy\noutput_val = list(sympy.primerange(1, 2001))`
 - **Reading content (Bash)**: `cat "${input}"`
