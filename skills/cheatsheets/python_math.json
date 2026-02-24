@@ -20,6 +20,12 @@
       "recommended": "import sympy\nx = sympy.Symbol('x')\noutput_val = sympy.solve(input_val, x)",
       "input_type": "Value",
       "output_type": "Value"
+    },
+    {
+      "task": "Find prime factors of a number",
+      "recommended": "import sympy\noutput_val = sympy.primefactors(int(input_val))",
+      "input_type": "Value",
+      "output_type": "List"
     }
   ]
 }

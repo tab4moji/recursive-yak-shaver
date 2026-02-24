@@ -5,7 +5,7 @@
   "patterns": [
     {
       "task": "Process text to uppercase",
-      "recommended": "output_val = input_val.upper()",
+      "recommended": "output_val = str(input_val).upper()",
       "input_type": "Value",
       "output_type": "Value"
     },
