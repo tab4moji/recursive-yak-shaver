@@ -36,7 +36,7 @@
     {
       "task_name": "Prime factorization",
       "description": "Calculate the prime factors of a given number using SymPy.",
-      "syntax": "import sympy\noutput_val = list(sympy.primefactors(int(input_val)))",
+      "syntax": "import sympy\nval = input_val['value'] if isinstance(input_val, dict) else input_val\noutput_val = list(sympy.primefactors(int(val)))",
       "input": [
         { "name": "n", "description": "Input integer", "type": "Value" }
       ],
