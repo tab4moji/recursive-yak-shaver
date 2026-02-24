@@ -5,7 +5,21 @@
   "patterns": [
     {
       "task": "Find prime numbers in a range",
-      "recommended": "python3 -c \"import math; min_v=${min}; max_v=${max}; print([i for i in range(min_v, max_v + 1) if i > 1 and all(i % d for d in range(2, int(math.sqrt(i)) + 1))])\""
+      "recommended": "import math\noutput_val = [i for i in range(input_val['min'], input_val['max'] + 1) if i > 1 and all(i % d for d in range(2, int(math.sqrt(i)) + 1))]",
+      "input_type": "Value",
+      "output_type": "List"
+    },
+    {
+      "task": "Calculate factorial of a number",
+      "recommended": "import math\noutput_val = math.factorial(int(input_val))",
+      "input_type": "Value",
+      "output_type": "Value"
+    },
+    {
+      "task": "Perform complex algebraic calculation",
+      "recommended": "import sympy\nx = sympy.Symbol('x')\noutput_val = sympy.solve(input_val, x)",
+      "input_type": "Value",
+      "output_type": "Value"
     }
   ]
 }

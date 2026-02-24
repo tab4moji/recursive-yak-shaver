@@ -4,16 +4,34 @@
   "description": "General purpose automation and logic execution.",
   "patterns": [
     {
-      "task": "Process input text using Python logic",
-      "recommended": "python3 -c \"import sys; print(sys.stdin.read().upper())\""
+      "task": "Process text to uppercase",
+      "recommended": "output_val = input_val.upper()",
+      "input_type": "Value",
+      "output_type": "Value"
     },
     {
-      "task": "Execute complex multi-line logic",
-      "recommended": "python3 << 'EOF'\nimport sys\nfor line in sys.stdin:\n    # Implement complex logic here\n    print(line.strip())\nEOF"
+      "task": "List all files in the directory using Python",
+      "recommended": "import os\noutput_val = [os.path.join(r, f) for r, _, fs in os.walk(input_val) for f in fs]",
+      "input_type": "Path",
+      "output_type": "List"
+    },
+    {
+      "task": "Filter list using Python",
+      "recommended": "output_val = [l.strip() for l in input_val if 'keyword' in l]",
+      "input_type": "List",
+      "output_type": "List"
+    },
+    {
+      "task": "Sort complex data from JSON string",
+      "recommended": "import json\nd = json.loads(input_val)\noutput_val = sorted(d, key=lambda x: x['size'])",
+      "input_type": "Value",
+      "output_type": "List"
     },
     {
       "task": "Perform static analysis using pylint",
-      "recommended": "pylint \"$1\""
+      "recommended": "import subprocess\nres = subprocess.run(['pylint', input_val], capture_output=True, text=True)\noutput_val = res.stdout",
+      "input_type": "Path",
+      "output_type": "Content"
     }
   ]
 }
