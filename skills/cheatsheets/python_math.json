@@ -26,6 +26,42 @@
       "recommended": "import sympy\noutput_val = sympy.primefactors(int(input_val))",
       "input_type": "Value",
       "output_type": "List"
+    },
+    {
+      "task": "Calculate Greatest Common Divisor (GCD)",
+      "recommended": "import math\noutput_val = math.gcd(input_val[0], input_val[1])",
+      "input_type": "List",
+      "output_type": "Value"
+    },
+    {
+      "task": "Calculate Least Common Multiple (LCM)",
+      "recommended": "import math\noutput_val = abs(input_val[0] * input_val[1]) // math.gcd(input_val[0], input_val[1])",
+      "input_type": "List",
+      "output_type": "Value"
+    },
+    {
+      "task": "Calculate mean and median of a list",
+      "recommended": "import statistics\noutput_val = {'mean': statistics.mean(input_val), 'median': statistics.median(input_val)}",
+      "input_type": "List",
+      "output_type": "Value"
+    },
+    {
+      "task": "Convert a decimal number to binary and hex",
+      "recommended": "output_val = {'bin': bin(int(input_val)), 'hex': hex(int(input_val))}",
+      "input_type": "Value",
+      "output_type": "Value"
+    },
+    {
+      "task": "Generate all permutations of a list",
+      "recommended": "import itertools\noutput_val = list(itertools.permutations(input_val))",
+      "input_type": "List",
+      "output_type": "List"
+    },
+    {
+      "task": "Calculate combinations (nCr)",
+      "recommended": "import math\noutput_val = math.comb(input_val['n'], input_val['r'])",
+      "input_type": "Value",
+      "output_type": "Value"
     }
   ]
 }

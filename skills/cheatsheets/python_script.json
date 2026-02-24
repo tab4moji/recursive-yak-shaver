@@ -32,6 +32,77 @@
       "recommended": "import subprocess\nres = subprocess.run(['pylint', input_val], capture_output=True, text=True)\noutput_val = res.stdout",
       "input_type": "Path",
       "output_type": "Content"
+    },
+    {
+      "task": "Read a JSON file and load its content",
+      "recommended": "import json\nwith open(input_val, 'r') as f:\n    output_val = json.load(f)",
+      "input_type": "Path",
+      "output_type": "Value"
+    },
+    {
+      "task": "Write a dictionary to a JSON file",
+      "recommended": "import json\nwith open(output_path, 'w') as f:\n    json.dump(input_val, f, indent=2)",
+      "input_type": "Value",
+      "output_type": "Path"
+    },
+    {
+      "task": "Search for a regular expression in a string",
+      "recommended": "import re\nmatch = re.search(input_pattern, input_val)\noutput_val = match.group(0) if match else None",
+      "input_type": "Value",
+      "output_type": "Value"
+    },
+    {
+      "task": "Substitute a regular expression in a string",
+      "recommended": "import re\noutput_val = re.sub(input_pattern, input_replacement, input_val)",
+      "input_type": "Value",
+      "output_type": "Value"
+    },
+    {
+      "task": "Read a CSV file as a list of dictionaries",
+      "recommended": "import csv\nwith open(input_val, 'r') as f:\n    reader = csv.DictReader(f)\n    output_val = [row for row in reader]",
+      "input_type": "Path",
+      "output_type": "List"
+    },
+    {
+      "task": "Write a list of dictionaries to a CSV file",
+      "recommended": "import csv\nwith open(output_path, 'w', newline='') as f:\n    if input_val:\n        writer = csv.DictWriter(f, fieldnames=input_val[0].keys())\n        writer.writeheader()\n        writer.writerows(input_val)",
+      "input_type": "List",
+      "output_type": "Path"
+    },
+    {
+      "task": "Get current datetime as a string",
+      "recommended": "from datetime import datetime\noutput_val = datetime.now().strftime('%Y-%m-%d %H:%M:%S')",
+      "output_type": "Value"
+    },
+    {
+      "task": "Base64 encode a string",
+      "recommended": "import base64\noutput_val = base64.b64encode(input_val.encode()).decode()",
+      "input_type": "Value",
+      "output_type": "Value"
+    },
+    {
+      "task": "Base64 decode a string",
+      "recommended": "import base64\noutput_val = base64.b64decode(input_val).decode()",
+      "input_type": "Value",
+      "output_type": "Value"
+    },
+    {
+      "task": "Check if a file or directory exists",
+      "recommended": "import os\noutput_val = os.path.exists(input_val)",
+      "input_type": "Path",
+      "output_type": "Value"
+    },
+    {
+      "task": "Identify the directory name from a path",
+      "recommended": "import os\noutput_val = os.path.dirname(input_val)",
+      "input_type": "Path",
+      "output_type": "Path"
+    },
+    {
+      "task": "Perform URL quoting (URL encode)",
+      "recommended": "import urllib.parse\noutput_val = urllib.parse.quote(input_val)",
+      "input_type": "Value",
+      "output_type": "Value"
     }
   ]
 }

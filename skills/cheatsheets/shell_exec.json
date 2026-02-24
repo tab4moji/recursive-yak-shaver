@@ -52,6 +52,76 @@
       "task": "Identify the current directory path",
       "recommended": "pwd",
       "output_type": "Path"
+    },
+    {
+      "task": "Check if a specific string exists in a file",
+      "recommended": "grep -q \"${input_keyword}\" \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Status"
+    },
+    {
+      "task": "Count lines in the specified file",
+      "recommended": "wc -l < \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Value"
+    },
+    {
+      "task": "Extract the last N lines of a file",
+      "recommended": "tail -n \"${input_n:-10}\" \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Content"
+    },
+    {
+      "task": "Extract a specific column from a TSV file",
+      "recommended": "cut -f \"${input_column:-1}\" \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Content"
+    },
+    {
+      "task": "Replace a string in a file (in-place)",
+      "recommended": "sed -i \"s/${input_old}/${input_new}/g\" \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Status"
+    },
+    {
+      "task": "Find files modified within the last 24 hours",
+      "recommended": "find \"${input}\" -type f -mtime -1",
+      "input_type": "Path",
+      "output_type": "List"
+    },
+    {
+      "task": "Check if a command is available on the system",
+      "recommended": "command -v \"${input_command}\"",
+      "output_type": "Path"
+    },
+    {
+      "task": "Calculate the SHA256 checksum of a file",
+      "recommended": "sha256sum \"${input}\" | cut -d' ' -f1",
+      "input_type": "Path",
+      "output_type": "Value"
+    },
+    {
+      "task": "Extract a tar.gz archive to the specified directory",
+      "recommended": "tar -xzf \"${input}\" -C \"${input_dir:-.}\"",
+      "input_type": "Path",
+      "output_type": "Status"
+    },
+    {
+      "task": "Create a zip archive of the specified directory",
+      "recommended": "zip -r \"${output_filename:-archive.zip}\" \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Path"
+    },
+    {
+      "task": "Get file permissions in numeric format",
+      "recommended": "stat -c %a \"${input}\"",
+      "input_type": "Path",
+      "output_type": "Value"
+    },
+    {
+      "task": "Retrieve the current Unix timestamp",
+      "recommended": "date +%s",
+      "output_type": "Value"
     }
   ]
 }
