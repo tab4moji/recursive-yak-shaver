@@ -17,12 +17,13 @@ def main():
     p2_data = load_phase_json(args.in_json)
 
     dispatch_text = p2_data.get("content", p2_data.get("dispatch_out", ""))
+    translated_text = p2_data.get("translated_text", "")
     if not dispatch_text:
         sys.exit(1)
 
     print(f"Grouping Phase starting for: {args.uuid}\n")
 
-    result = process_grouping(dispatch_text, args.host, args.port, args.model)
+    result = process_grouping(dispatch_text, args.host, args.port, args.model, translated_text)
 
     # Save the result
     with open(args.out_json, 'w', encoding='utf-8') as f:

@@ -42,11 +42,16 @@ def parse_input(dispatch_text: str) -> Dict[str, List[str]]:
 
 
 def run_grouper_llm(skill: str, tasks: List[Dict[str, str]],
-                   host: str, port: str, model: str) -> List[str]:
+                   host: str, port: str, model: str,
+                   translated_text: str = None) -> List[str]:
     """Step 3 (Gemma-3N): Intelligent grouping."""
     print("Phase3-Step3(gemma-3n):")
 
-    input_text = f"  {skill}: {', '.join([t['id'] for t in tasks])}\n"
+    input_text = ""
+    if translated_text:
+        input_text += f"Context (Original Request):\n{translated_text}\n\n"
+
+    input_text += f"  {skill}: {', '.join([t['id'] for t in tasks])}\n"
     for t in tasks:
         input_text += f"    {t['id']}: {t['raw']}\n"
 
@@ -133,7 +138,8 @@ def _normalize_task_id(tid: str) -> str:
 
 def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
                              idontknow_tasks: List[Dict[str, str]],
-                             host: str, port: str, model: str) -> List[Dict[str, Any]]:
+                             host: str, port: str, model: str,
+                             translated_text: str = None) -> List[Dict[str, Any]]:
     """Step 3: Intelligent Grouping."""
     print("")
     raw_jobs = []
@@ -145,7 +151,7 @@ def _llm_intelligent_grouping(skill_groups: Dict[str, List[Dict[str, str]]],
         if len(tasks) == 1:
             raw_jobs.append({"skill": skill, "task_ids": [tasks[0]["id"]]})
         else:
-            llm_results = run_grouper_llm(skill, tasks, host, port, model)
+            llm_results = run_grouper_llm(skill, tasks, host, port, model, translated_text)
             if not llm_results:
                 print(f"  Warning: No valid Job lines found for {skill}.")
                 llm_results = [f"Job: {t['id']}" for t in tasks]
@@ -194,7 +200,8 @@ def _format_final_jobs(raw_jobs: List[Dict[str, Any]],
         })
     return final_jobs
 
-def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Dict[str, Any]:
+def process_grouping(dispatch_text: str, host: str, port: str, model: str,
+                     translated_text: str = None) -> Dict[str, Any]:
     """Processes grouping workflow."""
     all_tasks = _assign_task_ids(dispatch_text)
     task_map = {t["id"]: t for t in all_tasks}
@@ -202,7 +209,7 @@ def process_grouping(dispatch_text: str, host: str, port: str, model: str) -> Di
     skill_groups = _group_by_skill(all_tasks)
     idontknow_tasks = [t for t in all_tasks if t["skill"] == "IDONTKNOW"]
 
-    raw_jobs = _llm_intelligent_grouping(skill_groups, idontknow_tasks, host, port, model)
+    raw_jobs = _llm_intelligent_grouping(skill_groups, idontknow_tasks, host, port, model, translated_text)
     final_jobs = _format_final_jobs(raw_jobs, task_map)
 
     return {
