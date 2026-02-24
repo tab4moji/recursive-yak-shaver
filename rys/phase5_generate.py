@@ -86,7 +86,7 @@ def process_python_job(job, args, llm_config):
         
         print(f"  Coding {task['id']}...")
         prompt = prepare_coder_prompt(task)
-        snippet = invoke_coder(SCRIPT_DIR, prompt, skill, llm_config)
+        snippet = invoke_coder(SCRIPT_DIR, prompt, skill, llm_config, task=task)
         
         script_lines.append(f"    # --- {task['id']}: {task['title']} ---")
         
@@ -195,7 +195,7 @@ def process_bash_job(job, args, llm_config):
         
         print(f"  Coding {task['id']}...")
         prompt = prepare_coder_prompt(task)
-        snippet = invoke_coder(SCRIPT_DIR, prompt, skill, llm_config)
+        snippet = invoke_coder(SCRIPT_DIR, prompt, skill, llm_config, task=task)
         
         script_lines.append(f"# --- {task['id']}: {task['title']} ---")
         

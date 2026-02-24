@@ -37,7 +37,7 @@
     {
       "task_name": "Identify largest file",
       "description": "Find the largest file from a provided list of file paths.",
-      "syntax": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -nr | head -n 1 | cut -d' ' -f2-",
+      "syntax": "echo \"${input}\" | xargs -d '\\n' du -b | sort -nr | head -n 1 | awk '{$1=\"\"; print substr($0,2)}'",
       "input": [
         { "name": "input_list", "description": "List of file paths", "type": "List" }
       ],
@@ -47,7 +47,7 @@
     {
       "task_name": "Identify smallest file",
       "description": "Find the smallest file from a provided list of file paths.",
-      "syntax": "echo \"${input}\" | xargs -d '\\n' du -b | sed 's/\\t/ /' | sort -n | head -n 1 | cut -d' ' -f2-",
+      "syntax": "echo \"${input}\" | xargs -d '\\n' du -b | sort -n | head -n 1 | awk '{$1=\"\"; print substr($0,2)}'",
       "input": [
         { "name": "input_list", "description": "List of file paths", "type": "List" }
       ],
